@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Rhythmic Poetry Editor</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="poem"></div>
+  
+  <!-- Floating bottom panel -->
+  <div class="floating-panel">
+    <div class="icon-button active" id="circle-icon">
+      <div class="icon-circles">
+        <div class="icon-circle"></div>
+        <div class="icon-circle"></div>
+      </div>
+    </div>
+    
+    <div class="time-signature-button" id="time-signature-button">
+      <div class="time-signature-top">4</div>
+      <div class="time-signature-bottom">4</div>
+    </div>
+
+    <div class="play-button" id="play-button">▶</div>
+
+    <div class="audio-controls">
+      <div class="checkbox-row beat">
+        <input type="checkbox" id="beat-checkbox" checked>
+        <label for="beat-checkbox">Beat</label>
+      </div>
+      <div class="checkbox-row rhythm">
+        <input type="checkbox" id="rhythm-checkbox" checked>
+        <label for="rhythm-checkbox">Rhythm</label>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
