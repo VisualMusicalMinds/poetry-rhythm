@@ -9,10 +9,16 @@ body { margin: 0; padding: 0; }
 .notes-box.playing { background-color: #ffff99; border-radius: 4px; }
 .notes-box svg, .notes-box img { width: 48px; height: 40px; margin: 0 4px; }
 .notes-box.compound svg, .notes-box.compound img {
-  width: 72px; /* Corrected width for 180x100 aspect ratio */
+  width: 72px; 
+}
+.notes-box.sixteenth svg, .notes-box.sixteenth img {
+  width: 96px; /* 240x100 aspect ratio at 40px height */
 }
 .circles { display: flex; justify-content: center; margin-bottom: 4px; border: 1px solid #c0c0c0; padding: 6px 8px; background-color: #f5f5f5; border-radius: 8px; transition: opacity 0.3s ease; }
 .circles.hidden { opacity: 0; pointer-events: none; }
+.circles.pickup {
+    background-color: #90EE90; /* Brighter Green */
+}
 .circle { width: 16px; height: 16px; margin: 0 2px; border-radius: 50%; background-color: grey; cursor: pointer; }
 .circle.active { background-color: #007bff; }
 .circle.syncopated { background-color: #28a745; } /* Green for syncopated */
@@ -204,6 +210,34 @@ body { margin: 0; padding: 0; }
     font-size: 20px;
     padding: 0 15px;
 }
+
+/* 16th Note Button */
+.sixteenth-note-button {
+    padding: 0 8px;
+}
+.sixteenth-note-button img {
+    height: 80%;
+    filter: grayscale(1);
+    opacity: 0.7;
+    transition: all 0.2s ease;
+}
+.sixteenth-note-button.active {
+    background-color: #28a745;
+}
+.sixteenth-note-button.active img {
+    filter: none;
+    opacity: 1;
+}
+.sixteenth-note-button.disabled {
+    cursor: not-allowed;
+    background-color: #f0f0f0;
+    border-color: #ccc;
+}
+.sixteenth-note-button.disabled img {
+    filter: grayscale(1);
+    opacity: 0.5;
+}
+
 
 /* Audio checkboxes */
 .audio-controls {
