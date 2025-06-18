@@ -377,51 +377,69 @@
   function startPlayback() {
     initAudioContext();
     isPlaying = true;
-    currentPlayPosition = 0; // Always start from beginning
+    currentPlayPosition = 0;
     playButton.textContent = '⏸';
     playButton.classList.add('playing');
-    
-    const rhythmPattern = getRhythmPattern();
-    
-    // Schedule quarter note beats (brush drums)
-    const totalBeats = Math.ceil(rhythmPattern.length / 2); // Number of quarter note beats
-    for (let beat = 0; beat < totalBeats; beat++) {
-      const timeDelay = beat * quarterNoteInterval;
-      
-      const beatTimeout = setTimeout(() => {
-        if (isPlaying) {
-          // Highlight the current beat
-          highlightNotesBox(beat);
-          
-          // Play brush drum on quarter notes
-          playBrushDrum();
-          
-          // Stop automatically when we reach the end
-          if (beat >= totalBeats - 1) {
-            // Schedule stop after the last beat
-            setTimeout(() => {
-              if (isPlaying) stopPlayback();
-            }, quarterNoteInterval);
-          }
+
+    // This function schedules the main playback of the rhythm and beat.
+    // It can be delayed to allow for a count-in.
+    const startPoetry = (delay = 0) => {
+        const rhythmPattern = getRhythmPattern();
+
+        // Schedule the beat track (if enabled)
+        const totalBeats = Math.ceil(rhythmPattern.length / 2);
+        for (let beat = 0; beat < totalBeats; beat++) {
+            const timeDelay = delay + (beat * quarterNoteInterval);
+            const beatTimeout = setTimeout(() => {
+                if (isPlaying) {
+                    highlightNotesBox(beat);
+                    if (beatEnabled) {
+                        playBrushDrum();
+                    }
+                    // Stop playback automatically after the last beat
+                    if (beat >= totalBeats - 1) {
+                        setTimeout(() => {
+                            if (isPlaying) stopPlayback();
+                        }, quarterNoteInterval);
+                    }
+                }
+            }, timeDelay);
+            playTimeouts.push(beatTimeout);
         }
-      }, timeDelay);
-      
-      playTimeouts.push(beatTimeout);
+
+        // Schedule the rhythm track
+        rhythmPattern.forEach((hasSound, index) => {
+            const timeDelay = delay + (index * eighthNoteInterval);
+            const rhythmTimeout = setTimeout(() => {
+                if (isPlaying && hasSound) {
+                    playTriangleTone(eighthNoteInterval * 0.8 / 1000);
+                }
+            }, timeDelay);
+            playTimeouts.push(rhythmTimeout);
+        });
+    };
+
+    // If the beat is enabled, play a 4-beat count-in before starting the main playback.
+    if (beatEnabled) {
+        const countInBeats = 4;
+        for (let i = 0; i < countInBeats; i++) {
+            const timeDelay = i * quarterNoteInterval;
+            const countInTimeout = setTimeout(() => {
+                if (isPlaying) {
+                    // Play the beat sound, but don't highlight anything during the count-in.
+                    playBrushDrum();
+                }
+            }, timeDelay);
+            playTimeouts.push(countInTimeout);
+        }
+        
+        // Calculate the total duration of the count-in and start the main playback after it.
+        const poetryStartDelay = countInBeats * quarterNoteInterval;
+        startPoetry(poetryStartDelay);
+    } else {
+        // If the beat is not enabled, start the rhythm immediately without a count-in.
+        startPoetry(0);
     }
-    
-    // Schedule rhythm sounds on eighth notes
-    rhythmPattern.forEach((hasSound, index) => {
-      const timeDelay = index * eighthNoteInterval;
-      
-      const rhythmTimeout = setTimeout(() => {
-        if (isPlaying && hasSound) {
-          // Play triangle tone for words and syncopated beats
-          playTriangleTone(eighthNoteInterval * 0.8 / 1000);
-        }
-      }, timeDelay);
-      
-      playTimeouts.push(rhythmTimeout);
-    });
   }
 
   function stopPlayback() {
