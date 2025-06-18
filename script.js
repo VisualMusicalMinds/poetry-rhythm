@@ -82,22 +82,6 @@
     return canSyncopate(position);
   }
 
-  // Initialize syncopation states for affected positions
-  function initializeSyncopationStates() {
-    syncopation.forEach(syncPos => {
-      const nextBeatFirstCircle = getNextBeatFirstCircle(syncPos);
-      const nextBeatSecondCircle = nextBeatFirstCircle + 1;
-      
-      if (nextBeatFirstCircle < words.length) {
-        // Set initial state: first inactive, second active
-        syncopationStates[nextBeatFirstCircle] = false; // inactive
-        if (nextBeatSecondCircle < words.length) {
-          syncopationStates[nextBeatSecondCircle] = true; // active
-        }
-      }
-    });
-  }
-
   // Get the syncopation type for a beat (for determining which image to show)
   function getSyncopationType(beatStartPosition) {
     // Check if this beat is affected by a syncopated beat before it
@@ -130,22 +114,42 @@
   // Toggle syncopation at a position
   function toggleSyncopation(position) {
     const syncopationIndex = syncopation.indexOf(position);
+    const nextBeatFirstCircle = getNextBeatFirstCircle(position);
+    const nextBeatSecondCircle = nextBeatFirstCircle + 1;
+
     if (syncopationIndex !== -1) {
-      // Remove syncopation
-      syncopation.splice(syncopationIndex, 1);
-      
-      // Clean up syncopation states for affected positions
-      const nextBeatFirstCircle = getNextBeatFirstCircle(position);
-      const nextBeatSecondCircle = nextBeatFirstCircle + 1;
-      delete syncopationStates[nextBeatFirstCircle];
-      delete syncopationStates[nextBeatSecondCircle];
+        // --- REMOVING SYNCOPATION ---
+        syncopation.splice(syncopationIndex, 1);
+
+        // Get the word that was playing on the upbeat.
+        const wordToMoveBack = words[nextBeatSecondCircle];
+        
+        // Remove that word from the array. This collapses the space.
+        words.splice(nextBeatSecondCircle, 1);
+        
+        // Replace the now-unneeded rest with the word.
+        words[nextBeatFirstCircle] = wordToMoveBack;
+
+        // Clean up the overridden states
+        delete syncopationStates[nextBeatFirstCircle];
+        delete syncopationStates[nextBeatSecondCircle];
     } else {
-      // Add syncopation
-      syncopation.push(position);
+        // --- ADDING SYNCOPATION ---
+        syncopation.push(position);
+        
+        // Get the word that's on the downbeat that will be silenced.
+        const wordToMove = words[nextBeatFirstCircle];
+        
+        // Replace it with a rest.
+        words[nextBeatFirstCircle] = '-';
+        
+        // Insert the word before the next word, shifting everything to the right.
+        words.splice(nextBeatSecondCircle, 0, wordToMove);
+
+        // Set the initial rhythm state for the affected beat
+        syncopationStates[nextBeatFirstCircle] = false; // First half of beat is silent
+        syncopationStates[nextBeatSecondCircle] = true;  // Second half of beat is sounded
     }
-    
-    // Initialize syncopation states
-    initializeSyncopationStates();
   }
 
   // Generate brush drum sound using white noise
@@ -487,26 +491,32 @@
             
             // Check if clicking first circle of a beat breaks syncopation effect
             if (circleIndex === 0) {
-              // This is first circle of a beat, check if it breaks syncopation
               for (const syncPos of syncopation) {
-                const nextBeatFirstCircle = getNextBeatFirstCircle(syncPos);
-                if (nextBeatFirstCircle === idx) {
-                  // Activating this breaks the syncopation - turn green circle blue
-                  const greenCircleIndex = syncopation.indexOf(syncPos);
-                  if (greenCircleIndex !== -1) {
-                    syncopation.splice(greenCircleIndex, 1);
-                    // Clean up syncopation states
-                    delete syncopationStates[nextBeatFirstCircle];
-                    delete syncopationStates[nextBeatFirstCircle + 1];
-                  }
+                if (getNextBeatFirstCircle(syncPos) === idx) {
+                  toggleSyncopation(syncPos);
+                  render();
+                  return;
                 }
               }
             }
             
             // Special handling for circles affected by syncopation
             if (isAffectedBySyncopation(idx)) {
-              // For affected circles, just toggle their syncopation state
               syncopationStates[idx] = !syncopationStates[idx];
+              
+              if (!syncopationStates[idx]) { // Deactivating the note
+                  const wordToDisplace = words[idx];
+                  if (wordToDisplace !== '-' && wordToDisplace !== '') {
+                      words[idx] = '-';
+                      words.splice(idx + 1, 0, wordToDisplace);
+                  }
+              } else { // Activating the note
+                  if (idx + 1 < words.length && words[idx] === '-') {
+                      const nextWord = words.splice(idx + 1, 1)[0];
+                      words[idx] = nextWord;
+                  }
+              }
+
             } else {
               // Normal toggle activation logic for non-affected circles
               if (words[idx] === '-' || words[idx] === '') {
@@ -606,10 +616,18 @@
             input.addEventListener('keydown',onKey);input.addEventListener('blur',onBlur);
           } else {
             const span = document.createElement('span');
-            // For affected positions, don't show the words
+            // For affected positions, show word only if the position is active
             if (isAffectedBySyncopation(idx)) {
-              span.textContent = '';
-              span.className = 'word rest';
+              if (isPositionActive(idx)) {
+                span.textContent = words[idx];
+                span.className = 'word';
+                if (words[idx] === '-') {
+                  span.classList.add('rest');
+                }
+              } else {
+                span.textContent = '';
+                span.className = 'word rest';
+              }
             } else {
               span.textContent = words[idx];
               span.className = 'word';
@@ -642,9 +660,6 @@
 
     // Clean up syncopation array - remove invalid positions
     syncopation = syncopation.filter(pos => pos < words.length && canCreateSyncopation(pos));
-
-    // Initialize syncopation states
-    initializeSyncopationStates();
 
     // Calculate total number of measures and find the last one
     const totalMeasures = Math.ceil(words.length / config.circlesPerMeasure);
