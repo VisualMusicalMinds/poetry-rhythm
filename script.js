@@ -107,6 +107,8 @@
   let circleIconActive = true;
   let timeSignatureNumerator = 4;
   let timeSignatureDenominator = 4;
+  let sixteenthNoteModeActive = false;
+  let hasPickupMeasure = false;
   let isPlaying = false;
   let playTimeouts = [];
   let currentPlayPosition = 0;
@@ -341,7 +343,10 @@
   // Get layout configuration based on time signature and screen width
   function getLayoutConfig() {
     const screenWidth = window.innerWidth;
-    const circlesPerBeat = timeSignatureDenominator === 8 ? 3 : 2;
+    let circlesPerBeat = timeSignatureDenominator === 8 ? 3 : 2;
+    if (timeSignatureDenominator === 4 && sixteenthNoteModeActive) {
+        circlesPerBeat = 4;
+    }
     const beatsPerMeasure = timeSignatureDenominator === 8 ? timeSignatureNumerator / 3 : timeSignatureNumerator;
     
     let measuresPerLine = 1;
@@ -395,6 +400,7 @@
       words = lyricsLibrary[selectedKey].slice();
       syncopation = []; // Reset syncopation when changing songs
       syncopationStates = {};
+      hasPickupMeasure = false; // Reset pickup on song change
       render();
     }
   });
@@ -448,6 +454,7 @@
     timeSignatureTopBtn.textContent = timeSignatureNumerator;
     timeSignatureBottomBtn.textContent = timeSignatureDenominator;
     timeSignatureButton.classList.toggle('compound', timeSignatureDenominator === 8);
+    updateSixteenthNoteButtonState();
     render();
   });
 
@@ -557,6 +564,26 @@
       closeModal();
   });
 
+  // 16th Note Button
+  const sixteenthNoteBtn = document.getElementById('sixteenth-note-btn');
+  sixteenthNoteBtn.addEventListener('click', () => {
+      if (timeSignatureDenominator === 4) {
+          sixteenthNoteModeActive = !sixteenthNoteModeActive;
+          sixteenthNoteBtn.classList.toggle('active', sixteenthNoteModeActive);
+          render();
+      }
+  });
+
+  function updateSixteenthNoteButtonState() {
+      if (timeSignatureDenominator === 8) {
+          sixteenthNoteModeActive = false;
+          sixteenthNoteBtn.classList.remove('active');
+          sixteenthNoteBtn.classList.add('disabled');
+      } else {
+          sixteenthNoteBtn.classList.remove('disabled');
+      }
+  }
+
 
   // --- PLAYBACK LOGIC ---
 
@@ -570,58 +597,20 @@
     const rhythmPattern = getRhythmPattern();
     const beatInterval = 60000 / BPM;
 
-    // --- Compound Time Playback ---
-    if (timeSignatureDenominator === 8) {
-      const eighthNoteInterval = beatInterval / 3;
-
-      const startPoetry = (delay = 0) => {
-        const totalBeats = Math.ceil(rhythmPattern.length / 3);
-
-        // Schedule BEAT track (dotted quarter notes)
-        for (let beat = 0; beat < totalBeats; beat++) {
-          const timeDelay = delay + (beat * beatInterval);
-          const beatTimeout = setTimeout(() => {
-            if (isPlaying) {
-              highlightNotesBox(beat);
-              if (beatEnabled) playBrushDrum();
-              if (beat >= totalBeats - 1) {
-                setTimeout(() => { if (isPlaying) stopPlayback(); }, beatInterval);
-              }
-            }
-          }, timeDelay);
-          playTimeouts.push(beatTimeout);
-        }
-
-        // Schedule RHYTHM track (eighth notes)
-        rhythmPattern.forEach((hasSound, index) => {
-          const timeDelay = delay + (index * eighthNoteInterval);
-          const rhythmTimeout = setTimeout(() => {
-            if (isPlaying && hasSound) playTriangleTone(eighthNoteInterval * 0.8 / 1000);
-          }, timeDelay);
-          playTimeouts.push(rhythmTimeout);
-        });
-      };
-
-      if (beatEnabled) {
-        const countInBeats = 4;
-        for (let i = 0; i < countInBeats; i++) {
-          const timeDelay = i * beatInterval;
-          const countInTimeout = setTimeout(() => { if (isPlaying) playBrushDrum(); }, timeDelay);
-          playTimeouts.push(countInTimeout);
-        }
-        startPoetry(countInBeats * beatInterval);
-      } else {
-        startPoetry(0);
-      }
-
-    // --- Simple Time Playback ---
-    } else {
-      const eighthNoteInterval = beatInterval / 2;
-      
-      const startPoetry = (delay = 0) => {
-        const totalBeats = Math.ceil(rhythmPattern.length / 2);
+    const startPoetry = (delay = 0) => {
+        let noteInterval, notesPerBeat;
         
-        // Schedule BEAT track (quarter notes)
+        if (timeSignatureDenominator === 8) {
+            noteInterval = beatInterval / 3;
+            notesPerBeat = 3;
+        } else {
+            noteInterval = sixteenthNoteModeActive ? beatInterval / 4 : beatInterval / 2;
+            notesPerBeat = sixteenthNoteModeActive ? 4 : 2;
+        }
+        
+        const totalBeats = Math.ceil(rhythmPattern.length / notesPerBeat);
+        
+        // Schedule BEAT track
         for (let beat = 0; beat < totalBeats; beat++) {
           const timeDelay = delay + (beat * beatInterval);
           const beatTimeout = setTimeout(() => {
@@ -636,27 +625,26 @@
           playTimeouts.push(beatTimeout);
         }
 
-        // Schedule RHYTHM track (eighth notes)
+        // Schedule RHYTHM track
         rhythmPattern.forEach((hasSound, index) => {
-          const timeDelay = delay + (index * eighthNoteInterval);
+          const timeDelay = delay + (index * noteInterval);
           const rhythmTimeout = setTimeout(() => {
-            if (isPlaying && hasSound) playTriangleTone(eighthNoteInterval * 0.8 / 1000);
+            if (isPlaying && hasSound) playTriangleTone(noteInterval * 0.8 / 1000);
           }, timeDelay);
           playTimeouts.push(rhythmTimeout);
         });
-      };
+    };
 
-      if (beatEnabled) {
-        const countInBeats = 4;
+    if (beatEnabled) {
+        let countInBeats = hasPickupMeasure ? 3 : 4;
         for (let i = 0; i < countInBeats; i++) {
           const timeDelay = i * beatInterval;
           const countInTimeout = setTimeout(() => { if (isPlaying) playBrushDrum(); }, timeDelay);
           playTimeouts.push(countInTimeout);
         }
         startPoetry(countInBeats * beatInterval);
-      } else {
+    } else {
         startPoetry(0);
-      }
     }
   }
 
@@ -678,242 +666,287 @@
 
   // --- RENDERING LOGIC ---
 
-  function createMeasure(lineStart, measureIndex, config, displayWords) {
-    const measure = document.createElement('div');
-    measure.className = 'measure';
+  function createBeatGroup(beatStartPosition, config, displayWords) {
+    const group = document.createElement('div');
+    group.className = 'group';
 
-    for (let beat = 0; beat < config.beatsPerMeasure; beat++) {
-        const beatStartPosition = lineStart + (measureIndex * config.circlesPerMeasure) + (beat * config.circlesPerBeat);
-        if (beatStartPosition >= displayWords.length) break;
+    // Add dblclick listener only to the very first beat group of the song
+    if (beatStartPosition === 0) {
+        group.addEventListener('dblclick', (e) => {
+            e.preventDefault();
+            hasPickupMeasure = !hasPickupMeasure;
+            render();
+        });
+    }
 
-        const group = document.createElement('div');
-        group.className = 'group';
+    const circlesDiv = document.createElement('div');
+    circlesDiv.className = 'circles';
+    if (!circleIconActive) circlesDiv.classList.add('hidden');
+    
+    if (beatStartPosition === 0 && hasPickupMeasure) {
+        circlesDiv.classList.add('pickup');
+    }
 
-        const circlesDiv = document.createElement('div');
-        circlesDiv.className = 'circles';
-        if (!circleIconActive) circlesDiv.classList.add('hidden');
-
-        for (let circleIndex = 0; circleIndex < config.circlesPerBeat; circleIndex++) {
-            const idx = beatStartPosition + circleIndex;
-            const circle = document.createElement('span');
-            circle.className = 'circle';
-            if (syncopation.includes(idx)) {
-                circle.classList.add('syncopated');
-            } else if (isPositionActive(idx, displayWords)) {
-                circle.classList.add('active');
+    for (let circleIndex = 0; circleIndex < config.circlesPerBeat; circleIndex++) {
+        const idx = beatStartPosition + circleIndex;
+        const circle = document.createElement('span');
+        circle.className = 'circle';
+        if (syncopation.includes(idx)) {
+            circle.classList.add('syncopated');
+        } else if (isPositionActive(idx, displayWords)) {
+            circle.classList.add('active');
+        }
+        circle.addEventListener('click', () => {
+            while (words.length <= idx) {
+                words.push('-');
             }
-            circle.addEventListener('click', () => {
+
+            if (syncopation.includes(idx)) return;
+            if (config.circlesPerBeat === 2 && circleIndex === 0) {
+                for (const syncPos of syncopation) {
+                    if (getNextBeatFirstCircle(syncPos) === idx) {
+                        toggleSyncopation(syncPos);
+                        render();
+                        return;
+                    }
+                }
+            }
+            if (isAffectedBySyncopation(idx)) {
+                syncopationStates[idx] = !syncopationStates[idx];
+                if (!syncopationStates[idx]) {
+                    const wordToDisplace = words[idx];
+                    if (wordToDisplace !== '-' && wordToDisplace !== '') {
+                        words[idx] = '-';
+                        words.splice(idx + 1, 0, wordToDisplace);
+                    }
+                } else {
+                    if (idx + 1 < words.length && words[idx] === '-') {
+                        const nextWord = words.splice(idx + 1, 1)[0];
+                        words[idx] = nextWord;
+                    }
+                }
+            } else {
+                if (words[idx] === '-' || words[idx] === '') {
+                    let nextWordIndex = -1;
+                    for (let j = idx + 1; j < words.length; j++) {
+                        if (words[j] !== '-' && words[j] !== '') {
+                            nextWordIndex = j;
+                            break;
+                        }
+                    }
+                    if (nextWordIndex !== -1) {
+                        words[idx] = words[nextWordIndex];
+                        words[nextWordIndex] = '-';
+                    } else {
+                        words[idx] = ' ';
+                    }
+                } else {
+                    const w = words[idx];
+                    words.splice(idx + 1, 0, w);
+                    words[idx] = '-';
+                }
+            }
+            render();
+        });
+        if (config.circlesPerBeat === 2 && circleIndex === 1) {
+            circle.addEventListener('dblclick', (e) => {
+                e.preventDefault();
+                if (canCreateSyncopation(idx)) {
+                    toggleSyncopation(idx);
+                    render();
+                }
+            });
+        }
+        circlesDiv.appendChild(circle);
+    }
+    group.appendChild(circlesDiv);
+
+    const notesBox = document.createElement('div');
+    notesBox.className = 'notes-box';
+    const beatIndex = Math.floor(beatStartPosition / config.circlesPerBeat);
+    if (beatIndex < notesBoxElements.length) {
+        notesBoxElements[beatIndex] = notesBox;
+    } else {
+        notesBoxElements.push(notesBox);
+    }
+
+    if (config.circlesPerBeat === 4) {
+        notesBox.classList.add('sixteenth');
+        const i = beatStartPosition;
+        const active1 = isPositionActive(i, displayWords);
+        const active2 = isPositionActive(i + 1, displayWords);
+        const active3 = isPositionActive(i + 2, displayWords);
+        const active4 = isPositionActive(i + 3, displayWords);
+        const pattern = (active1 ? 'X' : 'O') + (active2 ? 'X' : 'O') + (active3 ? 'X' : 'O') + (active4 ? 'X' : 'O');
+        const imageUrl = `https://visualmusicalminds.github.io/images/Wordrhythms-${pattern}.svg`;
+        notesBox.appendChild(createImage(imageUrl));
+    } else if (config.circlesPerBeat === 2) {
+        const i = beatStartPosition;
+        const active1 = isPositionActive(i, displayWords);
+        const active2 = isPositionActive(i + 1, displayWords);
+        const isSyncopated = syncopation.includes(i + 1);
+        const syncopationType = getSyncopationType(i);
+
+        if (syncopationType === 'SyncopateB') notesBox.appendChild(createImage('https://visualmusicalminds.github.io/images/Wordrhythms-SyncopateB.svg'));
+        else if (syncopationType === 'SyncopateC') notesBox.appendChild(createImage('https://visualmusicalminds.github.io/images/Wordrhythms-SyncopateC.svg'));
+        else if (isSyncopated) notesBox.appendChild(createImage('https://visualmusicalminds.github.io/images/Wordrhythms-SyncopateA.svg'));
+        else if (active1 && !active2) notesBox.appendChild(createImage('https://visualmusicalminds.github.io/images/Wordrhythms-quarternote.svg'));
+        else if (active1 && active2) notesBox.appendChild(createImage('https://visualmusicalminds.github.io/images/Wordrhythms-eighthnotepair.svg'));
+        else if (!active1 && !active2) notesBox.appendChild(createImage('https://visualmusicalminds.github.io/images/Wordrhythms-quarterrest.svg'));
+        else if (!active1 && active2) notesBox.appendChild(createImage('https://visualmusicalminds.github.io/images/Wordrhythms-eighthrestnote.svg'));
+
+    } else if (config.circlesPerBeat === 3) {
+        notesBox.classList.add('compound');
+        const i = beatStartPosition;
+        const active1 = isPositionActive(i, displayWords);
+        const active2 = isPositionActive(i + 1, displayWords);
+        const active3 = isPositionActive(i + 2, displayWords);
+
+        const pattern = (active1 ? 'X' : 'O') + (active2 ? 'X' : 'O') + (active3 ? 'X' : 'O');
+
+        let imageUrl = '';
+        switch (pattern) {
+            case 'XXX': imageUrl = 'https://visualmusicalminds.github.io/images/Wordrhythms-XXX.svg'; break;
+            case 'OOO': imageUrl = 'https://visualmusicalminds.github.io/images/Wordrhythms-OOO.svg'; break;
+            case 'XOO': imageUrl = 'https://visualmusicalminds.github.io/images/Wordrhythms-XOO.svg'; break;
+            case 'XXO': imageUrl = 'https://visualmusicalminds.github.io/images/Wordrhythms-XXO.svg'; break;
+            case 'XOX': imageUrl = 'https://visualmusicalminds.github.io/images/Wordrhythms-XOX.svg'; break;
+            case 'OXO': imageUrl = 'https://visualmusicalminds.github.io/images/Wordrhythms-OXO.svg'; break;
+            case 'OOX': imageUrl = 'https://visualmusicalminds.github.io/images/Wordrhythms-OOX.svg'; break;
+            case 'OXX': imageUrl = 'https://visualmusicalminds.github.io/images/Wordrhythms-OXX.svg'; break;
+        }
+        if (imageUrl) {
+            notesBox.appendChild(createImage(imageUrl));
+        }
+    }
+    group.appendChild(notesBox);
+
+    const wordsDiv = document.createElement('div');
+    wordsDiv.className = 'words';
+    for (let circleIndex = 0; circleIndex < config.circlesPerBeat; circleIndex++) {
+        const idx = beatStartPosition + circleIndex;
+        const wc = document.createElement('span');
+        wc.className = 'word-container';
+        if (idx === editingIndex) {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = displayWords[idx];
+            input.className = 'word-input';
+            wc.appendChild(input);
+            wordsDiv.appendChild(wc);
+            setTimeout(() => { input.focus(); input.select(); });
+            function cleanup() { input.removeEventListener('keydown', onKey); input.removeEventListener('blur', onBlur); }
+            function onKey(e) {
+                if (e.key === 'Enter') { e.preventDefault(); words[idx] = input.value; editingIndex = null; cleanup(); render(); }
+                else if (e.key === 'Escape') { e.preventDefault(); editingIndex = null; cleanup(); render(); }
+                else if (e.key === ' ' || e.code === 'Space') { 
+                    e.preventDefault(); 
+                    words[idx] = input.value === '' ? '-' : input.value;
+                    editingIndex = idx + 1; 
+                    if (editingIndex >= words.length) {
+                        words.push('-');
+                    }
+                    cleanup(); 
+                    render();
+                }
+                else if ((e.key === 'Backspace' || e.key === 'Delete') && input.value === '') { e.preventDefault(); words.splice(idx, 1); editingIndex = Math.max(idx - 1, 0); if (words.length === 0) { words = ['-']; editingIndex = 0; } cleanup(); render(); }
+            }
+            function onBlur() { words[idx] = input.value; editingIndex = null; cleanup(); render(); }
+            input.addEventListener('keydown', onKey);
+            input.addEventListener('blur', onBlur);
+        } else {
+            const span = document.createElement('span');
+            const word = displayWords[idx];
+            if (isAffectedBySyncopation(idx) && !isPositionActive(idx, displayWords)) {
+                span.textContent = '';
+                span.className = 'word rest';
+            } else {
+                span.textContent = word;
+                span.className = 'word';
+                if (word === '-') span.classList.add('rest');
+            }
+            span.addEventListener('click', () => {
                 while (words.length <= idx) {
                     words.push('-');
                 }
-
-                if (syncopation.includes(idx)) return;
-                if (config.circlesPerBeat === 2 && circleIndex === 0) {
-                    for (const syncPos of syncopation) {
-                        if (getNextBeatFirstCircle(syncPos) === idx) {
-                            toggleSyncopation(syncPos);
-                            render();
-                            return;
-                        }
-                    }
-                }
-                if (isAffectedBySyncopation(idx)) {
-                    syncopationStates[idx] = !syncopationStates[idx];
-                    if (!syncopationStates[idx]) {
-                        const wordToDisplace = words[idx];
-                        if (wordToDisplace !== '-' && wordToDisplace !== '') {
-                            words[idx] = '-';
-                            words.splice(idx + 1, 0, wordToDisplace);
-                        }
-                    } else {
-                        if (idx + 1 < words.length && words[idx] === '-') {
-                            const nextWord = words.splice(idx + 1, 1)[0];
-                            words[idx] = nextWord;
-                        }
-                    }
-                } else {
-                    if (words[idx] === '-' || words[idx] === '') {
-                        let nextWordIndex = -1;
-                        for (let j = idx + 1; j < words.length; j++) {
-                            if (words[j] !== '-' && words[j] !== '') {
-                                nextWordIndex = j;
-                                break;
-                            }
-                        }
-                        if (nextWordIndex !== -1) {
-                            words[idx] = words[nextWordIndex];
-                            words[nextWordIndex] = '-';
-                        } else {
-                            words[idx] = ' ';
-                        }
-                    } else {
-                        const w = words[idx];
-                        words.splice(idx + 1, 0, w);
-                        words[idx] = '-';
-                    }
-                }
+                editingIndex = idx;
                 render();
             });
-            if (config.circlesPerBeat === 2 && circleIndex === 1) {
-                circle.addEventListener('dblclick', (e) => {
-                    e.preventDefault();
-                    if (canCreateSyncopation(idx)) {
-                        toggleSyncopation(idx);
-                        render();
-                    }
-                });
-            }
-            circlesDiv.appendChild(circle);
+            wc.appendChild(span);
+            wordsDiv.appendChild(wc);
         }
-        group.appendChild(circlesDiv);
-
-        const notesBox = document.createElement('div');
-        notesBox.className = 'notes-box';
-        const beatIndex = Math.floor(beatStartPosition / config.circlesPerBeat);
-        if (beatIndex < notesBoxElements.length) {
-            notesBoxElements[beatIndex] = notesBox;
-        } else {
-            notesBoxElements.push(notesBox);
-        }
-
-        if (config.circlesPerBeat === 2) {
-            const i = beatStartPosition;
-            const active1 = isPositionActive(i, displayWords);
-            const active2 = isPositionActive(i + 1, displayWords);
-            const isSyncopated = syncopation.includes(i + 1);
-            const syncopationType = getSyncopationType(i);
-
-            if (syncopationType === 'SyncopateB') notesBox.appendChild(createImage('https://visualmusicalminds.github.io/images/Wordrhythms-SyncopateB.svg'));
-            else if (syncopationType === 'SyncopateC') notesBox.appendChild(createImage('https://visualmusicalminds.github.io/images/Wordrhythms-SyncopateC.svg'));
-            else if (isSyncopated) notesBox.appendChild(createImage('https://visualmusicalminds.github.io/images/Wordrhythms-SyncopateA.svg'));
-            else if (active1 && !active2) notesBox.appendChild(createImage('https://visualmusicalminds.github.io/images/Wordrhythms-quarternote.svg'));
-            else if (active1 && active2) notesBox.appendChild(createImage('https://visualmusicalminds.github.io/images/Wordrhythms-eighthnotepair.svg'));
-            else if (!active1 && !active2) notesBox.appendChild(createImage('https://visualmusicalminds.github.io/images/Wordrhythms-quarterrest.svg'));
-            else if (!active1 && active2) notesBox.appendChild(createImage('https://visualmusicalminds.github.io/images/Wordrhythms-eighthrestnote.svg'));
-
-        } else if (config.circlesPerBeat === 3) {
-            notesBox.classList.add('compound');
-            const i = beatStartPosition;
-            const active1 = isPositionActive(i, displayWords);
-            const active2 = isPositionActive(i + 1, displayWords);
-            const active3 = isPositionActive(i + 2, displayWords);
-
-            const pattern = (active1 ? 'X' : 'O') + (active2 ? 'X' : 'O') + (active3 ? 'X' : 'O');
-
-            let imageUrl = '';
-            switch (pattern) {
-                case 'XXX': imageUrl = 'https://visualmusicalminds.github.io/images/Wordrhythms-XXX.svg'; break;
-                case 'OOO': imageUrl = 'https://visualmusicalminds.github.io/images/Wordrhythms-OOO.svg'; break;
-                case 'XOO': imageUrl = 'https://visualmusicalminds.github.io/images/Wordrhythms-XOO.svg'; break;
-                case 'XXO': imageUrl = 'https://visualmusicalminds.github.io/images/Wordrhythms-XXO.svg'; break;
-                case 'XOX': imageUrl = 'https://visualmusicalminds.github.io/images/Wordrhythms-XOX.svg'; break;
-                case 'OXO': imageUrl = 'https://visualmusicalminds.github.io/images/Wordrhythms-OXO.svg'; break;
-                case 'OOX': imageUrl = 'https://visualmusicalminds.github.io/images/Wordrhythms-OOX.svg'; break;
-                case 'OXX': imageUrl = 'https://visualmusicalminds.github.io/images/Wordrhythms-OXX.svg'; break;
-            }
-            if (imageUrl) {
-                notesBox.appendChild(createImage(imageUrl));
-            }
-        }
-        group.appendChild(notesBox);
-
-        const wordsDiv = document.createElement('div');
-        wordsDiv.className = 'words';
-        for (let circleIndex = 0; circleIndex < config.circlesPerBeat; circleIndex++) {
-            const idx = beatStartPosition + circleIndex;
-            const wc = document.createElement('span');
-            wc.className = 'word-container';
-            if (idx === editingIndex) {
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.value = words[idx];
-                input.className = 'word-input';
-                wc.appendChild(input);
-                wordsDiv.appendChild(wc);
-                setTimeout(() => { input.focus(); input.select(); });
-                function cleanup() { input.removeEventListener('keydown', onKey); input.removeEventListener('blur', onBlur); }
-                function onKey(e) {
-                    if (e.key === 'Enter') { e.preventDefault(); words[idx] = input.value; editingIndex = null; cleanup(); render(); }
-                    else if (e.key === 'Escape') { e.preventDefault(); editingIndex = null; cleanup(); render(); }
-                    else if (e.key === ' ' || e.code === 'Space') { 
-                        e.preventDefault(); 
-                        words[idx] = input.value === '' ? '-' : input.value;
-                        editingIndex = idx + 1; 
-                        if (editingIndex >= words.length) {
-                            words.push('-');
-                        }
-                        cleanup(); 
-                        render();
-                    }
-                    else if ((e.key === 'Backspace' || e.key === 'Delete') && input.value === '') { e.preventDefault(); words.splice(idx, 1); editingIndex = Math.max(idx - 1, 0); if (words.length === 0) { words = ['-']; editingIndex = 0; } cleanup(); render(); }
-                }
-                function onBlur() { words[idx] = input.value; editingIndex = null; cleanup(); render(); }
-                input.addEventListener('keydown', onKey);
-                input.addEventListener('blur', onBlur);
-            } else {
-                const span = document.createElement('span');
-                const word = displayWords[idx];
-                if (isAffectedBySyncopation(idx) && !isPositionActive(idx, displayWords)) {
-                    span.textContent = '';
-                    span.className = 'word rest';
-                } else {
-                    span.textContent = word;
-                    span.className = 'word';
-                    if (word === '-') span.classList.add('rest');
-                }
-                span.addEventListener('click', () => {
-                    while (words.length <= idx) {
-                        words.push('-');
-                    }
-                    editingIndex = idx;
-                    render();
-                });
-                wc.appendChild(span);
-                wordsDiv.appendChild(wc);
-            }
-        }
-        group.appendChild(wordsDiv);
-        measure.appendChild(group);
     }
-    return measure;
+    group.appendChild(wordsDiv);
+    return group;
+  }
+
+  function createDivider(isFinal = false) {
+    const divider = document.createElement('div');
+    divider.className = isFinal ? 'final-measure-divider' : 'measure-divider';
+    return divider;
   }
 
   function render() {
     container.innerHTML = '';
     notesBoxElements = [];
+    updateSixteenthNoteButtonState();
     const config = getLayoutConfig();
 
     const displayWords = [...words];
-    if (config.circlesPerBeat > 0 && displayWords.length % config.circlesPerBeat !== 0) {
-        const paddingNeeded = config.circlesPerBeat - (displayWords.length % config.circlesPerBeat);
-        for (let i = 0; i < paddingNeeded; i++) {
+    
+    let circlesToPad;
+    if (hasPickupMeasure) {
+        const bodyLength = displayWords.length > config.circlesPerBeat ? displayWords.length - config.circlesPerBeat : 0;
+        circlesToPad = (config.circlesPerMeasure - (bodyLength % config.circlesPerMeasure)) % config.circlesPerMeasure;
+    } else {
+        circlesToPad = (config.circlesPerMeasure - (displayWords.length % config.circlesPerMeasure)) % config.circlesPerMeasure;
+    }
+    if (displayWords.length > 0 || circlesToPad > 0) {
+        for (let i = 0; i < circlesToPad; i++) {
             displayWords.push('-');
         }
     }
     
-    const circlesPerLine = config.measuresPerLine * config.circlesPerMeasure;
+    const allBeatGroups = [];
+    for (let i = 0; i < displayWords.length; i += config.circlesPerBeat) {
+        allBeatGroups.push(createBeatGroup(i, config, displayWords));
+    }
 
-    for (let lineStart = 0; lineStart < displayWords.length; lineStart += circlesPerLine) {
+    if (allBeatGroups.length === 0) return;
+
+    let currentBeatIndex = 0;
+    while(currentBeatIndex < allBeatGroups.length) {
         const line = document.createElement('div');
         line.className = 'line';
-        for (let measureIndex = 0; measureIndex < config.measuresPerLine; measureIndex++) {
-            const measureStart = lineStart + (measureIndex * config.circlesPerMeasure);
-            if (measureStart >= displayWords.length) break;
+        
+        let beatsOnThisLine = 0;
+        let measuresOnThisLine = 0;
+        
+        if (currentBeatIndex === 0 && hasPickupMeasure) {
+            // Pickup beat
+            line.appendChild(allBeatGroups[currentBeatIndex++]);
+            line.appendChild(createDivider());
+            beatsOnThisLine = 1;
+        }
 
-            line.appendChild(createMeasure(lineStart, measureIndex, config, displayWords));
+        // Add full measures
+        const measuresPerLine = (currentBeatIndex === 0 && hasPickupMeasure) ? 1 : config.measuresPerLine;
+        
+        while(measuresOnThisLine < measuresPerLine && currentBeatIndex < allBeatGroups.length) {
+            const measure = document.createElement('div');
+            measure.className = 'measure';
+            for(let i=0; i < config.beatsPerMeasure && currentBeatIndex < allBeatGroups.length; i++) {
+                measure.appendChild(allBeatGroups[currentBeatIndex++]);
+            }
+            line.appendChild(measure);
+            measuresOnThisLine++;
 
-            const isLastMeasureInSong = (measureStart + config.circlesPerMeasure >= displayWords.length);
-
-            if (!isLastMeasureInSong) {
-                const divider = document.createElement('div');
-                divider.className = 'measure-divider';
-                line.appendChild(divider);
-            } else {
-                const finalDivider = document.createElement('div');
-                finalDivider.className = 'final-measure-divider';
-                line.appendChild(finalDivider);
+            if (measuresOnThisLine < measuresPerLine && currentBeatIndex < allBeatGroups.length) {
+                line.appendChild(createDivider());
             }
         }
+        
+        line.appendChild(createDivider(currentBeatIndex >= allBeatGroups.length));
         container.appendChild(line);
     }
   }
