@@ -114,6 +114,7 @@
   let beatEnabled = true; // Beat checkbox state
   let rhythmEnabled = true; // Rhythm checkbox state
   let BPM = 82;
+  let textImportMode = 'add'; // 'add' or 'replace'
 
   // Audio context for generating sounds
   let audioContext = null;
@@ -500,6 +501,62 @@
   const rhythmCheckbox = document.getElementById('rhythm-checkbox');
   beatCheckbox.addEventListener('change', (e) => { beatEnabled = e.target.checked; });
   rhythmCheckbox.addEventListener('change', (e) => { rhythmEnabled = e.target.checked; });
+
+  // Paragraph (text input modal) setup
+  const paragraphBtn = document.getElementById('paragraph-btn');
+  const modal = document.getElementById('text-input-modal');
+  const multiLineInput = document.getElementById('multi-line-input');
+  const modalCancelBtn = document.getElementById('modal-cancel-btn');
+  const modalSubmitBtn = document.getElementById('modal-submit-btn');
+  const toggleAddBtn = document.getElementById('toggle-add-btn');
+  const toggleReplaceBtn = document.getElementById('toggle-replace-btn');
+
+  function openModal() {
+      modal.style.display = 'flex';
+  }
+
+  function closeModal() {
+      modal.style.display = 'none';
+  }
+
+  paragraphBtn.addEventListener('click', openModal);
+  modalCancelBtn.addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+          closeModal();
+      }
+  });
+
+  toggleAddBtn.addEventListener('click', () => {
+      textImportMode = 'add';
+      toggleAddBtn.classList.add('active');
+      toggleReplaceBtn.classList.remove('active');
+  });
+
+  toggleReplaceBtn.addEventListener('click', () => {
+      textImportMode = 'replace';
+      toggleReplaceBtn.classList.add('active');
+      toggleAddBtn.classList.remove('active');
+  });
+  
+  modalSubmitBtn.addEventListener('click', () => {
+      const text = multiLineInput.value;
+      if (text) {
+          const newWords = text.replace(/\n/g, ' ').split(' ').map(word => word === '' ? '-' : word);
+
+          if (textImportMode === 'replace') {
+              words = newWords;
+              syncopation = [];
+              syncopationStates = {};
+          } else { // 'add' mode
+              words = words.concat(newWords);
+          }
+          render();
+      }
+      multiLineInput.value = ''; // Clear textarea
+      closeModal();
+  });
+
 
   // --- PLAYBACK LOGIC ---
 
