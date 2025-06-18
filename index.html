@@ -7,6 +7,24 @@
 </head>
 <body>
   <div id="poem"></div>
+
+  <!-- Modal for text input -->
+  <div id="text-input-modal" class="modal-backdrop">
+    <div class="modal-content">
+      <h2>Enter Your Text</h2>
+      <textarea id="multi-line-input" placeholder="Enter text here..." spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
+      <div class="modal-actions">
+        <div class="toggle-container">
+            <button id="toggle-add-btn" class="toggle-button active">Add</button>
+            <button id="toggle-replace-btn" class="toggle-button">Replace</button>
+        </div>
+        <div>
+            <button id="modal-cancel-btn" class="modal-button">Cancel</button>
+            <button id="modal-submit-btn" class="modal-button submit">Submit</button>
+        </div>
+      </div>
+    </div>
+  </div>
   
   <!-- Floating bottom panel -->
   <div class="floating-panel">
@@ -42,6 +60,8 @@
         <label for="rhythm-checkbox">Rhythm</label>
       </div>
     </div>
+
+    <div class="control-button paragraph-button" id="paragraph-btn">¶</div>
   </div>
 
   <script src="script.js"></script>
