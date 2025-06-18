@@ -2,6 +2,9 @@
   const container = document.getElementById('poem');
 
   const lyricsLibrary = {
+    'new-song': [
+        'Start', 'Here'
+    ],
     'hickory-dickory-dock': [
       'Hick-', 'o-', 'ry', 'dick-', 'o-', 'ry', 'dock,',
       'The', 'mouse', 'ran', 'up', 'the', 'clock.',
@@ -383,6 +386,7 @@
       option.textContent = key.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
       lyricsDropdown.appendChild(option);
     }
+    lyricsDropdown.value = 'hickory-dickory-dock'; // Set default selection
   }
   lyricsDropdown.addEventListener('change', (e) => {
     const selectedKey = e.target.value;
@@ -774,7 +778,16 @@
                 function onKey(e) {
                     if (e.key === 'Enter') { e.preventDefault(); words[idx] = input.value; editingIndex = null; cleanup(); render(); }
                     else if (e.key === 'Escape') { e.preventDefault(); editingIndex = null; cleanup(); render(); }
-                    else if (e.key === ' ' || e.code === 'Space') { e.preventDefault(); const t = input.value === '' ? '-' : input.value; words[idx] = t; editingIndex = idx + 1; cleanup(); render(); }
+                    else if (e.key === ' ' || e.code === 'Space') { 
+                        e.preventDefault(); 
+                        words[idx] = input.value === '' ? '-' : input.value;
+                        editingIndex = idx + 1; 
+                        if (editingIndex >= words.length) {
+                            words.push('-');
+                        }
+                        cleanup(); 
+                        render();
+                    }
                     else if ((e.key === 'Backspace' || e.key === 'Delete') && input.value === '') { e.preventDefault(); words.splice(idx, 1); editingIndex = Math.max(idx - 1, 0); if (words.length === 0) { words = ['-']; editingIndex = 0; } cleanup(); render(); }
                 }
                 function onBlur() { words[idx] = input.value; editingIndex = null; cleanup(); render(); }
