@@ -27,28 +27,12 @@
   </div>
   
   <!-- Floating bottom panel -->
-  <div class="floating-panel">
-    <div class="icon-button active" id="circle-icon">
-      <div class="icon-circles">
-        <div class="icon-circle"></div>
-        <div class="icon-circle"></div>
-      </div>
-    </div>
-
-    <select id="lyrics-dropdown" class="control-button lyrics-dropdown"></select>
-    
-    <div class="ts-button-wrapper">
-      <div class="time-signature-button">
-        <div class="time-signature-top" id="time-signature-top-btn">4</div>
-        <div class="time-signature-bottom" id="time-signature-bottom-btn">4</div>
-      </div>
-    </div>
+  <div class="floating-panel" id="floating-panel">
+    <div class="play-button" id="play-button">▶</div>
 
     <div class="control-button" id="bpm-button">
       <span id="bpm-value">82</span>&nbsp;BPM
     </div>
-
-    <div class="play-button" id="play-button">▶</div>
 
     <div class="audio-controls">
       <div class="checkbox-row beat">
@@ -61,11 +45,29 @@
       </div>
     </div>
 
-    <div class="control-button paragraph-button" id="paragraph-btn">¶</div>
+    <select id="lyrics-dropdown" class="control-button lyrics-dropdown"></select>
+    
+    <div class="ts-button-wrapper">
+      <div class="time-signature-button">
+        <div class="time-signature-top" id="time-signature-top-btn">4</div>
+        <div class="time-signature-bottom" id="time-signature-bottom-btn">4</div>
+      </div>
+    </div>
+
     <div class="control-button sixteenth-note-button" id="sixteenth-note-btn">
         <img src="https://visualmusicalminds.github.io/images/Wordrhythms-16thicon.svg" alt="16th note mode">
     </div>
+
+    <div class="control-button paragraph-button" id="paragraph-btn">¶</div>
+    
+    <div class="icon-button active" id="circle-icon">
+      <div class="icon-circles">
+        <div class="icon-circle"></div>
+        <div class="icon-circle"></div>
+      </div>
+    </div>
   </div>
+  <button class="panel-toggle-button" id="panel-toggle-button"></button>
 
   <script src="script.js"></script>
 </body>
