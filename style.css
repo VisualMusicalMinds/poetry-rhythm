@@ -1,5 +1,5 @@
 body { margin: 0; padding: 0; }
-#poem { font-size: 1.2em; line-height: 2em; margin-bottom: 80px; padding: 20px; }
+#poem { font-size: 1.2em; line-height: 2em; padding: 20px; }
 .line { display: block; margin-bottom: 16px; text-align: center; }
 .measure { display: inline-block; vertical-align: top; }
 .measure-divider { display: inline-block; width: 2px; height: 80px; background-color: #666; margin: 0 8px; vertical-align: top; position: relative; top: 24px; }
@@ -12,7 +12,7 @@ body { margin: 0; padding: 0; }
   width: 72px; 
 }
 .notes-box.sixteenth svg, .notes-box.sixteenth img {
-  width: 96px; /* 240x100 aspect ratio at 40px height */
+  width: 96px;
 }
 .circles { display: flex; justify-content: center; margin-bottom: 4px; border: 1px solid #c0c0c0; padding: 6px 8px; background-color: #f5f5f5; border-radius: 8px; transition: opacity 0.3s ease; }
 .circles.hidden { opacity: 0; pointer-events: none; }
@@ -42,8 +42,48 @@ body { margin: 0; padding: 0; }
   justify-content: center; 
   gap: 15px;
   padding: 0 20px; 
-  z-index: 1000; 
+  z-index: 1000;
+  transition: bottom 0.3s ease-in-out;
 }
+
+.floating-panel.collapsed {
+  bottom: -50px;
+}
+
+/* Panel Toggle Button */
+.panel-toggle-button {
+  position: fixed;
+  bottom: 60px; /* Positioned on top of the panel's border */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 20px;
+  background-color: #0066cc;
+  border: none;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+  cursor: pointer;
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: bottom 0.3s ease-in-out;
+}
+
+.panel-toggle-button::after {
+  content: '▼'; /* Down arrow */
+  color: white;
+  font-size: 14px;
+}
+
+.panel-toggle-button.collapsed {
+  bottom: 10px; /* Moves with the panel but stays visible */
+}
+
+.panel-toggle-button.collapsed::after {
+  content: '▲'; /* Up arrow */
+}
+
 
 /* Base style for control buttons */
 .control-button {
@@ -79,14 +119,7 @@ body { margin: 0; padding: 0; }
 
 /* Lyrics dropdown */
 .lyrics-dropdown {
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23007bff%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
-  background-repeat: no-repeat;
-  background-position: right .7em top 50%;
-  background-size: .65em auto;
-  padding-right: 2em;
+  /* Inherits styles from .control-button */
 }
 
 
@@ -378,4 +411,48 @@ body { margin: 0; padding: 0; }
 .toggle-button.active {
     background-color: #007bff;
     color: white;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 720px) {
+  .floating-panel {
+    height: 90px; /* Reduced height */
+    display: grid;
+    grid-template-areas:
+      "play ts note para circle"
+      ". bpm audio-ctrl lyrics .";
+    grid-template-columns: 1fr repeat(3, auto) 1fr;
+    grid-template-rows: auto auto;
+    gap: 5px 10px; /* Reduced row gap */
+    padding: 5px 10px; /* Reduced top/bottom padding */
+    align-items: center;
+    justify-content: center;
+  }
+
+  .floating-panel.collapsed {
+    bottom: -90px; /* Adjusted for new height */
+  }
+
+  .panel-toggle-button {
+    bottom: 100px; /* Sit on top of the 100px panel */
+  }
+  
+  .panel-toggle-button.collapsed {
+    bottom: 10px; /* Sit on top of the visible part of the collapsed panel */
+  }
+
+  /* Assign items to grid areas */
+  #play-button { grid-area: play; justify-self: end; }
+  .ts-button-wrapper { grid-area: ts; }
+  #sixteenth-note-btn { grid-area: note; }
+  #paragraph-btn { grid-area: para; }
+  #circle-icon { grid-area: circle; justify-self: start; }
+  #bpm-button { grid-area: bpm; justify-self: end; }
+  .audio-controls { grid-area: audio-ctrl; }
+  #lyrics-dropdown { grid-area: lyrics; justify-self: start;}
+
+  /* Ensure all direct children of the panel are considered grid items */
+  .floating-panel > * {
+    min-width: 0;
+  }
 }
