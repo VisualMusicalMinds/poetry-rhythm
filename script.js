@@ -381,6 +381,29 @@
 
   // --- UI ELEMENT SETUP ---
 
+  // Panel Toggle Button
+  const panelToggleButton = document.getElementById('panel-toggle-button');
+  const floatingPanel = document.getElementById('floating-panel');
+
+  function updatePoemMargin() {
+    const isPanelCollapsed = floatingPanel.classList.contains('collapsed');
+    const isSmallScreen = window.innerWidth <= 720;
+    
+    if (isPanelCollapsed) {
+      container.style.marginBottom = '40px';
+    } else {
+      container.style.marginBottom = isSmallScreen ? '150px' : '80px';
+    }
+  }
+
+
+  panelToggleButton.addEventListener('click', () => {
+    floatingPanel.classList.toggle('collapsed');
+    panelToggleButton.classList.toggle('collapsed');
+    updatePoemMargin();
+  });
+
+
   // Lyrics Dropdown
   const lyricsDropdown = document.getElementById('lyrics-dropdown');
   function populateLyricsDropdown() {
@@ -849,7 +872,16 @@
                     cleanup(); 
                     render();
                 }
-                else if ((e.key === 'Backspace' || e.key === 'Delete') && input.value === '') { e.preventDefault(); words.splice(idx, 1); editingIndex = Math.max(idx - 1, 0); if (words.length === 0) { words = ['-']; editingIndex = 0; } cleanup(); render(); }
+                else if ((e.key === 'Backspace' || e.key === 'Delete') && input.value === '') { 
+                  e.preventDefault(); 
+                  words.splice(idx, 1); 
+                  editingIndex = Math.max(idx - 1, 0); 
+                  if (words.length === 0) {
+                    words.push('-');
+                  }
+                  cleanup(); 
+                  render(); 
+                }
             }
             function onBlur() { words[idx] = input.value; editingIndex = null; cleanup(); render(); }
             input.addEventListener('keydown', onKey);
@@ -953,5 +985,7 @@
 
   // --- INITIALIZATION ---
   populateLyricsDropdown();
+  updatePoemMargin();
+  window.addEventListener('resize', updatePoemMargin);
   render();
 })();
