@@ -193,6 +193,88 @@
     }
   }
 
+  // Copy canvas to clipboard
+  async function copyCanvasToClipboard(canvas) {
+    try {
+      // Convert canvas to blob
+      return new Promise(resolve => {
+        canvas.toBlob(async (blob) => {
+          try {
+            await navigator.clipboard.write([
+              new ClipboardItem({ 'image/png': blob })
+            ]);
+            resolve(true);
+          } catch (err) {
+            console.error('Failed to copy image to clipboard:', err);
+            resolve(false);
+          }
+        }, 'image/png');
+      });
+    } catch (err) {
+      console.error('Clipboard API not supported:', err);
+      return false;
+    }
+  }
+
+  // Capture visual and copy to clipboard
+  async function captureVisual() {
+    const copyVisualBtn = document.getElementById('copy-visual-btn');
+    const originalText = copyVisualBtn.textContent;
+    
+    try {
+      // Add capturing class to hide interactive elements
+      document.body.classList.add('capturing');
+      
+      // Show loading state
+      copyVisualBtn.textContent = '⏳';
+      copyVisualBtn.style.backgroundColor = '#ffc107';
+      
+      // Wait a moment for styles to apply
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Capture the poem area
+      const canvas = await html2canvas(container, {
+        backgroundColor: '#ffffff',
+        scale: 2, // Higher resolution
+        useCORS: true,
+        allowTaint: true,
+        scrollX: 0,
+        scrollY: 0
+      });
+      
+      // Try to copy to clipboard
+      const success = await copyCanvasToClipboard(canvas);
+      
+      if (success) {
+        copyVisualBtn.textContent = '✓';
+        copyVisualBtn.style.backgroundColor = '#28a745';
+      } else {
+        // Fallback: download the image
+        const link = document.createElement('a');
+        link.download = 'rhythm-notation.png';
+        link.href = canvas.toDataURL();
+        link.click();
+        
+        copyVisualBtn.textContent = '💾';
+        copyVisualBtn.style.backgroundColor = '#17a2b8';
+      }
+      
+    } catch (error) {
+      console.error('Failed to capture visual:', error);
+      copyVisualBtn.textContent = '✗';
+      copyVisualBtn.style.backgroundColor = '#dc3545';
+    } finally {
+      // Remove capturing class
+      document.body.classList.remove('capturing');
+      
+      // Reset button after 2 seconds
+      setTimeout(() => {
+        copyVisualBtn.textContent = originalText;
+        copyVisualBtn.style.backgroundColor = '';
+      }, 2000);
+    }
+  }
+
   // Get the first circle position of the next beat after a syncopated position
   function getNextBeatFirstCircle(syncopatedPosition) {
     // syncopatedPosition is the second circle of a beat (odd number)
@@ -596,6 +678,10 @@
   const rhythmCheckbox = document.getElementById('rhythm-checkbox');
   beatCheckbox.addEventListener('change', (e) => { beatEnabled = e.target.checked; });
   rhythmCheckbox.addEventListener('change', (e) => { rhythmEnabled = e.target.checked; });
+
+  // Copy Visual button
+  const copyVisualBtn = document.getElementById('copy-visual-btn');
+  copyVisualBtn.addEventListener('click', captureVisual);
 
   // Paragraph (text input modal) setup
   const paragraphBtn = document.getElementById('paragraph-btn');
