@@ -363,6 +363,12 @@ body { margin: 0; padding: 0; }
     gap: 10px;
 }
 
+.modal-buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
 .modal-button {
     padding: 10px 20px;
     border-radius: 5px;
@@ -382,13 +388,69 @@ body { margin: 0; padding: 0; }
     background-color: #0056b3;
 }
 
-.modal-button {
+.modal-button:not(.submit):not(.copy-button) {
     background-color: #e7e7e7;
     color: black;
 }
 
-.modal-button:hover {
+.modal-button:not(.submit):not(.copy-button):hover {
     background-color: #ddd;
+}
+
+/* Copy Button Styles */
+.copy-button {
+    background-color: #6c757d;
+    color: white;
+    padding: 10px 12px;
+    position: relative;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.copy-button:hover {
+    background-color: #5a6268;
+}
+
+.copy-icon {
+    position: relative;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.copy-square {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border: 2px solid white;
+    border-radius: 2px;
+    background-color: transparent;
+}
+
+.copy-square-back {
+    top: 2px;
+    left: 2px;
+}
+
+.copy-square-front {
+    top: -2px;
+    left: -2px;
+    background-color: #6c757d;
+}
+
+.copy-button:hover .copy-square-front {
+    background-color: #5a6268;
+}
+
+/* Success and error states for copy button */
+.copy-icon.copied,
+.copy-icon.error {
+    font-size: 14px;
+    font-weight: bold;
 }
 
 .toggle-container {
