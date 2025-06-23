@@ -122,6 +122,11 @@ body { margin: 0; padding: 0; }
   /* Inherits styles from .control-button */
 }
 
+/* Copy Visual Button */
+.copy-visual-button {
+    font-size: 18px;
+    padding: 0 12px;
+}
 
 /* Circle icon button */
 .icon-button { 
@@ -475,15 +480,28 @@ body { margin: 0; padding: 0; }
     color: white;
 }
 
+/* Styles for capturing (temporarily hide interactive elements) */
+.capturing .circle {
+    cursor: default;
+}
+
+.capturing .word {
+    cursor: default;
+}
+
+.capturing .notes-box.playing {
+    background-color: transparent;
+}
+
 /* Responsive adjustments for smaller screens */
 @media (max-width: 720px) {
   .floating-panel {
     height: 90px; /* Reduced height */
     display: grid;
     grid-template-areas:
-      "play ts note para circle"
-      ". bpm audio-ctrl lyrics .";
-    grid-template-columns: 1fr repeat(3, auto) 1fr;
+      "play ts note para camera circle"
+      ". bpm audio-ctrl lyrics . .";
+    grid-template-columns: 1fr repeat(4, auto) 1fr;
     grid-template-rows: auto auto;
     gap: 5px 10px; /* Reduced row gap */
     padding: 5px 10px; /* Reduced top/bottom padding */
@@ -508,6 +526,7 @@ body { margin: 0; padding: 0; }
   .ts-button-wrapper { grid-area: ts; }
   #sixteenth-note-btn { grid-area: note; }
   #paragraph-btn { grid-area: para; }
+  #copy-visual-btn { grid-area: camera; }
   #circle-icon { grid-area: circle; justify-self: start; }
   #bpm-button { grid-area: bpm; justify-self: end; }
   .audio-controls { grid-area: audio-ctrl; }
