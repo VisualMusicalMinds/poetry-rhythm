@@ -117,6 +117,7 @@
   let rhythmEnabled = true; // Rhythm checkbox state
   let BPM = 82;
   let textImportMode = 'add'; // 'add' or 'replace'
+  let savedTextInput = ''; // Store the text from the modal
 
   // Audio context for generating sounds
   let audioContext = null;
@@ -126,6 +127,70 @@
       audioContext = new (window.AudioContext || window.webkitAudioContext)();
     }
     return audioContext;
+  }
+
+  // Convert the current words array to text with proper spacing that reflects rhythm
+  function wordsToText() {
+    let result = '';
+    let i = 0;
+    
+    while (i < words.length) {
+      const word = words[i];
+      
+      if (word !== '-' && word !== '') {
+        // Add the word
+        result += word;
+        
+        // Count how many empty circles (rests) follow this word
+        let restCount = 0;
+        let j = i + 1;
+        
+        // Look ahead to count consecutive rests or empty positions
+        while (j < words.length && (words[j] === '-' || words[j] === '')) {
+          restCount++;
+          j++;
+        }
+        
+        // Add spaces: 1 space for the natural word boundary, plus 1 space for each rest
+        const totalSpaces = 1 + restCount;
+        result += ' '.repeat(totalSpaces);
+        
+        // Move to the position after all the rests
+        i = j;
+      } else {
+        // Skip isolated rests (they'll be handled by the word that precedes them)
+        i++;
+      }
+    }
+    
+    // Clean up any trailing spaces
+    return result.trimEnd();
+  }
+
+  // Copy text to clipboard
+  async function copyToClipboard(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (err) {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        textArea.remove();
+        return true;
+      } catch (err) {
+        textArea.remove();
+        return false;
+      }
+    }
   }
 
   // Get the first circle position of the next beat after a syncopated position
@@ -538,10 +603,16 @@
   const multiLineInput = document.getElementById('multi-line-input');
   const modalCancelBtn = document.getElementById('modal-cancel-btn');
   const modalSubmitBtn = document.getElementById('modal-submit-btn');
+  const modalCopyBtn = document.getElementById('modal-copy-btn');
   const toggleAddBtn = document.getElementById('toggle-add-btn');
   const toggleReplaceBtn = document.getElementById('toggle-replace-btn');
 
   function openModal() {
+      // Load the current words from the page into the modal with proper rhythm spacing
+      const currentText = wordsToText();
+      multiLineInput.value = currentText;
+      // Update the saved text to match current content
+      savedTextInput = currentText;
       modal.style.display = 'flex';
   }
 
@@ -568,10 +639,35 @@
       toggleReplaceBtn.classList.add('active');
       toggleAddBtn.classList.remove('active');
   });
+
+  // Copy button functionality
+  modalCopyBtn.addEventListener('click', async () => {
+      const textToCopy = multiLineInput.value;
+      const success = await copyToClipboard(textToCopy);
+      
+      // Visual feedback
+      const originalText = modalCopyBtn.innerHTML;
+      if (success) {
+          modalCopyBtn.innerHTML = '<div class="copy-icon copied">✓</div>';
+          modalCopyBtn.style.backgroundColor = '#28a745';
+      } else {
+          modalCopyBtn.innerHTML = '<div class="copy-icon error">✗</div>';
+          modalCopyBtn.style.backgroundColor = '#dc3545';
+      }
+      
+      // Reset after 1 second
+      setTimeout(() => {
+          modalCopyBtn.innerHTML = originalText;
+          modalCopyBtn.style.backgroundColor = '';
+      }, 1000);
+  });
   
   modalSubmitBtn.addEventListener('click', () => {
       const text = multiLineInput.value;
       if (text) {
+          // Save the text for future use
+          savedTextInput = text;
+          
           const newWords = text.replace(/\n/g, ' ').split(' ').map(word => word === '' ? '-' : word);
 
           if (textImportMode === 'replace') {
@@ -583,7 +679,7 @@
           }
           render();
       }
-      multiLineInput.value = ''; // Clear textarea
+      // Note: We no longer clear the textarea here - it keeps the saved text
       closeModal();
   });
 
