@@ -131,8 +131,21 @@
 
   // Convert the current words array to text with proper spacing that reflects rhythm
   function wordsToText() {
-    // Convert rests ('-' or '') to '\' and join with spaces.
-    return words.map(word => (word === '-' || word === '') ? '\\' : word).join(' ');
+    let textWords = [];
+    for (let i = 0; i < words.length; i++) {
+        const syncopationIndex = syncopation.indexOf(i + 1);
+        if (syncopationIndex !== -1) {
+            const w1 = words[i] === '-' ? '\\' : words[i];
+            const w2 = words[i + 1] === '-' ? '\\' : words[i + 1];
+            const w3 = words[i + 3] === '-' ? '\\' : words[i + 3];
+            textWords.push(`[${w1} ${w2} ${w3}]`);
+            i += 3; // Skip the next 3 positions
+        } else {
+            const word = words[i];
+            textWords.push((word === '-' || word === '') ? '\\' : word);
+        }
+    }
+    return textWords.join(' ');
   }
 
   // Copy text to clipboard
@@ -315,47 +328,6 @@
     } else {
       const word = wordArray[position];
       return word !== '-' && word !== '';
-    }
-  }
-
-  // Toggle syncopation at a position
-  function toggleSyncopation(position) {
-    const syncopationIndex = syncopation.indexOf(position);
-    const nextBeatFirstCircle = getNextBeatFirstCircle(position);
-    const nextBeatSecondCircle = nextBeatFirstCircle + 1;
-
-    if (syncopationIndex !== -1) {
-        // --- REMOVING SYNCOPATION ---
-        syncopation.splice(syncopationIndex, 1);
-
-        // Get the word that was playing on the upbeat.
-        const wordToMoveBack = words[nextBeatSecondCircle];
-        
-        // Remove that word from the array. This collapses the space.
-        words.splice(nextBeatSecondCircle, 1);
-        
-        // Replace the now-unneeded rest with the word.
-        words[nextBeatFirstCircle] = wordToMoveBack;
-
-        // Clean up the overridden states
-        delete syncopationStates[nextBeatFirstCircle];
-        delete syncopationStates[nextBeatSecondCircle];
-    } else {
-        // --- ADDING SYNCOPATION ---
-        syncopation.push(position);
-        
-        // Get the word that's on the downbeat that will be silenced.
-        const wordToMove = words[nextBeatFirstCircle];
-        
-        // Replace it with a rest.
-        words[nextBeatFirstCircle] = '-';
-        
-        // Insert the word before the next word, shifting everything to the right.
-        words.splice(nextBeatSecondCircle, 0, wordToMove);
-
-        // Set the initial rhythm state for the affected beat
-        syncopationStates[nextBeatFirstCircle] = false; // First half of beat is silent
-        syncopationStates[nextBeatSecondCircle] = true;  // Second half of beat is sounded
     }
   }
 
@@ -673,12 +645,23 @@
       }
       const header = `[BPM:${BPM} \\ Time Signature: ${timeSig} \\ 16th notes: ${sixteenthStatus}]`;
 
-      // Load the current words from the page into the modal with proper rhythm spacing
-      const currentText = wordsToText();
-      const fullText = `${header}\n${currentText}`;
+      // Generate the body text, handling pickup measures and syncopation
+      let bodyText;
+      const textWithSyncopation = wordsToText();
+
+      if (hasPickupMeasure) {
+          const config = getLayoutConfig();
+          const wordTokens = textWithSyncopation.split(' ');
+          const pickupText = wordTokens.slice(0, config.circlesPerBeat).join(' ');
+          const remainingText = wordTokens.slice(config.circlesPerBeat).join(' ');
+          bodyText = `${pickupText} | ${remainingText}`;
+      } else {
+          bodyText = textWithSyncopation;
+      }
+
+      const fullText = `${header}\n${bodyText}`;
       multiLineInput.value = fullText;
       
-      // Update the saved text to match current content
       savedTextInput = fullText;
       modal.style.display = 'flex';
   }
@@ -734,25 +717,23 @@
       if (text) {
           savedTextInput = text;
           const lines = text.split('\n');
-          const headerLine = lines[0];
+          let firstLine = lines[0];
+          let contentText;
 
-          // --- PARSE HEADER AND UPDATE SETTINGS ---
-          if (headerLine.startsWith('[') && headerLine.endsWith(']')) {
-              const settingsStr = headerLine.slice(1, -1);
+          if (firstLine.startsWith('[') && firstLine.endsWith(']')) {
+              const settingsStr = firstLine.slice(1, -1);
               
-              // BPM
               const bpmMatch = settingsStr.match(/BPM:(\d+)/);
               if (bpmMatch && bpmMatch[1]) {
                   let newBPM = parseInt(bpmMatch[1], 10);
                   if (!isNaN(newBPM)) {
                       if (newBPM > 600) newBPM = 600;
-                      if (newBPM <= 20) newBPM = 21; // Ensure it's above the minimum
+                      if (newBPM <= 20) newBPM = 21;
                       BPM = newBPM;
                       bpmValueSpan.textContent = BPM;
                   }
               }
 
-              // Time Signature
               const tsMatch = settingsStr.match(/Time Signature: (\d+)\/(\d+)/);
               if (tsMatch && tsMatch[1] && tsMatch[2]) {
                   const newNumerator = parseInt(tsMatch[1], 10);
@@ -766,29 +747,96 @@
                   }
               }
 
-              // 16th Notes
               const sixteenthMatch = settingsStr.match(/16th notes: (yes|no)/);
               if (sixteenthMatch && sixteenthMatch[1]) {
                   if (timeSignatureDenominator === 8) {
-                      sixteenthNoteModeActive = false; // Override for compound time
+                      sixteenthNoteModeActive = false;
                   } else {
                       sixteenthNoteModeActive = (sixteenthMatch[1] === 'yes');
                   }
                   sixteenthNoteBtn.classList.toggle('active', sixteenthNoteModeActive);
               }
-              updateSixteenthNoteButtonState(); // Sync disabled state
+              updateSixteenthNoteButtonState();
+              
+              contentText = lines.slice(1).join('\n');
+          } else {
+              contentText = text;
           }
           
-          // --- PROCESS LYRICS ---
-          const contentText = lines.slice(1).join(' ');
-          const newWords = contentText.split(' ').filter(w => w.length > 0).map(word => word === '\\' ? '-' : word);
+          if (contentText.includes('|')) {
+              hasPickupMeasure = true;
+              contentText = contentText.replace(/\|/g, ''); // Use regex to remove all instances
+          } else {
+              hasPickupMeasure = false;
+          }
+
+          const newSyncopation = [];
+          const newSyncopationStates = {};
+          const finalWords = [];
+          
+          const config = getLayoutConfig(); // Get current layout config
+          const tokens = contentText.trim().replace(/\n/g, ' ').split(/(\[[^\]]+\])|\s+/).filter(Boolean);
+
+          for(let i=0; i<tokens.length; i++) {
+              let token = tokens[i].trim();
+              if (token.startsWith('[') && token.endsWith(']')) {
+                  // --- START OF SYNC PARSING ---
+                  let currentPos = finalWords.length;
+                  let posInMeasure = currentPos % config.circlesPerMeasure;
+                  let beatInMeasure = Math.floor(posInMeasure / config.circlesPerBeat);
+                  
+                  // Check if current position is valid
+                  let isValid = (currentPos % 2 === 0) && (beatInMeasure < config.beatsPerMeasure - 1);
+
+                  if (!isValid) {
+                      let nextPos = currentPos;
+                      if (nextPos % 2 !== 0) { // If on an upbeat, move to next downbeat
+                          nextPos++;
+                      }
+                      
+                      let nextPosInMeasure = nextPos % config.circlesPerMeasure;
+                      let nextBeatInMeasure = Math.floor(nextPosInMeasure / config.circlesPerBeat);
+                      
+                      if (nextBeatInMeasure >= config.beatsPerMeasure - 1) { // If on last beat, move to next measure
+                          nextPos = currentPos - nextPosInMeasure + config.circlesPerMeasure;
+                      }
+
+                      // Add rests to fill the gap
+                      for (let j = currentPos; j < nextPos; j++) {
+                          finalWords.push('-');
+                      }
+                  }
+                  
+                  const syncStartIndex = finalWords.length;
+                  const syncTriggerPos = syncStartIndex + 1;
+                  const affectedBeatStart = syncStartIndex + 2;
+
+                  newSyncopation.push(syncTriggerPos);
+                  
+                  const syncGroup = token.slice(1, -1).split(/\s+/).filter(Boolean);
+                  const w1 = syncGroup[0] || '-';
+                  const w2 = syncGroup[1] || '-';
+                  const w3 = syncGroup[2] || '-';
+
+                  finalWords.push(w1 === '\\' ? '-' : w1);
+                  finalWords.push(w2 === '\\' ? '-' : w2);
+                  finalWords.push('-');
+                  finalWords.push(w3 === '\\' ? '-' : w3);
+
+                  newSyncopationStates[affectedBeatStart] = false;
+                  newSyncopationStates[affectedBeatStart + 1] = (w3 !== '-' && w3 !== '\\');
+                  // --- END OF SYNC PARSING ---
+              } else {
+                  finalWords.push(token === '\\' ? '-' : token);
+              }
+          }
 
           if (textImportMode === 'replace') {
-              words = newWords;
-              syncopation = [];
-              syncopationStates = {};
+              words = finalWords;
+              syncopation = newSyncopation;
+              syncopationStates = newSyncopationStates;
           } else {
-              words = words.concat(newWords);
+              words = words.concat(finalWords);
           }
           render();
       }
@@ -932,30 +980,22 @@
                 words.push('-');
             }
 
-            if (syncopation.includes(idx)) return;
-            if (config.circlesPerBeat === 2 && circleIndex === 0) {
-                for (const syncPos of syncopation) {
-                    if (getNextBeatFirstCircle(syncPos) === idx) {
-                        toggleSyncopation(syncPos);
-                        render();
-                        return;
-                    }
-                }
+            // If the user clicks the green syncopation trigger, undo it.
+            if (syncopation.includes(idx)) {
+                const syncopationIndex = syncopation.indexOf(idx);
+                syncopation.splice(syncopationIndex, 1);
+                
+                // Remove the placeholder rest and clean up states
+                words.splice(idx + 1, 1);
+                delete syncopationStates[idx + 1];
+                delete syncopationStates[idx + 2];
+                
+                render();
+                return;
             }
+
             if (isAffectedBySyncopation(idx)) {
                 syncopationStates[idx] = !syncopationStates[idx];
-                if (!syncopationStates[idx]) {
-                    const wordToDisplace = words[idx];
-                    if (wordToDisplace !== '-' && wordToDisplace !== '') {
-                        words[idx] = '-';
-                        words.splice(idx + 1, 0, wordToDisplace);
-                    }
-                } else {
-                    if (idx + 1 < words.length && words[idx] === '-') {
-                        const nextWord = words.splice(idx + 1, 1)[0];
-                        words[idx] = nextWord;
-                    }
-                }
             } else {
                 if (words[idx] === '-' || words[idx] === '') {
                     let nextWordIndex = -1;
@@ -979,15 +1019,6 @@
             }
             render();
         });
-        if (config.circlesPerBeat === 2 && circleIndex === 1) {
-            circle.addEventListener('dblclick', (e) => {
-                e.preventDefault();
-                if (canCreateSyncopation(idx)) {
-                    toggleSyncopation(idx);
-                    render();
-                }
-            });
-        }
         circlesDiv.appendChild(circle);
     }
     group.appendChild(circlesDiv);
