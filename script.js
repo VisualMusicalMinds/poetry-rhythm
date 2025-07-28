@@ -116,7 +116,7 @@
   let beatEnabled = true; // Beat checkbox state
   let rhythmEnabled = true; // Rhythm checkbox state
   let BPM = 82;
-  let textImportMode = 'add'; // 'add' or 'replace'
+  let textImportMode = 'replace'; // 'add' or 'replace'
   let savedTextInput = ''; // Store the text from the modal
 
   // Audio context for generating sounds
@@ -1138,5 +1138,8 @@
   populateLyricsDropdown();
   updatePoemMargin();
   window.addEventListener('resize', updatePoemMargin);
+  // Set initial state of toggle buttons
+  toggleReplaceBtn.classList.add('active');
+  toggleAddBtn.classList.remove('active');
   render();
 })();
