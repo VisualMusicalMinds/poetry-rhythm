@@ -617,6 +617,9 @@
       if (isNaN(newValue) || newValue <= 20) { // Set a minimum BPM
         newValue = 82; // Reset to default if invalid
       }
+      if (newValue > 600) { // Set a maximum BPM
+        newValue = 600;
+      }
       BPM = newValue;
       bpmValueSpan.textContent = BPM;
       bpmButton.innerHTML = '';
@@ -662,11 +665,21 @@
   const toggleReplaceBtn = document.getElementById('toggle-replace-btn');
 
   function openModal() {
+      // Generate the metadata header
+      const timeSig = `${timeSignatureNumerator}/${timeSignatureDenominator}`;
+      let sixteenthStatus = 'no';
+      if (timeSignatureDenominator === 4 && sixteenthNoteModeActive) {
+          sixteenthStatus = 'yes';
+      }
+      const header = `[BPM:${BPM} \\ Time Signature: ${timeSig} \\ 16th notes: ${sixteenthStatus}]`;
+
       // Load the current words from the page into the modal with proper rhythm spacing
       const currentText = wordsToText();
-      multiLineInput.value = currentText;
+      const fullText = `${header}\n${currentText}`;
+      multiLineInput.value = fullText;
+      
       // Update the saved text to match current content
-      savedTextInput = currentText;
+      savedTextInput = fullText;
       modal.style.display = 'flex';
   }
 
@@ -719,22 +732,66 @@
   modalSubmitBtn.addEventListener('click', () => {
       const text = multiLineInput.value;
       if (text) {
-          // Save the text for future use
           savedTextInput = text;
+          const lines = text.split('\n');
+          const headerLine = lines[0];
+
+          // --- PARSE HEADER AND UPDATE SETTINGS ---
+          if (headerLine.startsWith('[') && headerLine.endsWith(']')) {
+              const settingsStr = headerLine.slice(1, -1);
+              
+              // BPM
+              const bpmMatch = settingsStr.match(/BPM:(\d+)/);
+              if (bpmMatch && bpmMatch[1]) {
+                  let newBPM = parseInt(bpmMatch[1], 10);
+                  if (!isNaN(newBPM)) {
+                      if (newBPM > 600) newBPM = 600;
+                      if (newBPM <= 20) newBPM = 21; // Ensure it's above the minimum
+                      BPM = newBPM;
+                      bpmValueSpan.textContent = BPM;
+                  }
+              }
+
+              // Time Signature
+              const tsMatch = settingsStr.match(/Time Signature: (\d+)\/(\d+)/);
+              if (tsMatch && tsMatch[1] && tsMatch[2]) {
+                  const newNumerator = parseInt(tsMatch[1], 10);
+                  const newDenominator = parseInt(tsMatch[2], 10);
+                  if (!isNaN(newNumerator) && !isNaN(newDenominator)) {
+                      timeSignatureNumerator = newNumerator;
+                      timeSignatureDenominator = newDenominator;
+                      timeSignatureTopBtn.textContent = newNumerator;
+                      timeSignatureBottomBtn.textContent = newDenominator;
+                      timeSignatureButton.classList.toggle('compound', newDenominator === 8);
+                  }
+              }
+
+              // 16th Notes
+              const sixteenthMatch = settingsStr.match(/16th notes: (yes|no)/);
+              if (sixteenthMatch && sixteenthMatch[1]) {
+                  if (timeSignatureDenominator === 8) {
+                      sixteenthNoteModeActive = false; // Override for compound time
+                  } else {
+                      sixteenthNoteModeActive = (sixteenthMatch[1] === 'yes');
+                  }
+                  sixteenthNoteBtn.classList.toggle('active', sixteenthNoteModeActive);
+              }
+              updateSixteenthNoteButtonState(); // Sync disabled state
+          }
           
-          // Split by space, handle newlines, filter empty, and map '\' to rests.
-          const newWords = text.replace(/\n/g, ' ').split(' ').filter(w => w.length > 0).map(word => word === '\\' ? '-' : word);
+          // --- PROCESS LYRICS ---
+          const contentText = lines.slice(1).join(' ');
+          const newWords = contentText.split(' ').filter(w => w.length > 0).map(word => word === '\\' ? '-' : word);
 
           if (textImportMode === 'replace') {
               words = newWords;
               syncopation = [];
               syncopationStates = {};
-          } else { // 'add' mode
+          } else {
               words = words.concat(newWords);
           }
           render();
       }
-      // Note: We no longer clear the textarea here - it keeps the saved text
       closeModal();
   });
 
