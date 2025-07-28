@@ -774,50 +774,22 @@
           const newSyncopationStates = {};
           const finalWords = [];
           
-          const config = getLayoutConfig(); // Get current layout config
           const tokens = contentText.trim().replace(/\n/g, ' ').split(/(\[[^\]]+\])|\s+/).filter(Boolean);
 
           for(let i=0; i<tokens.length; i++) {
               let token = tokens[i].trim();
               if (token.startsWith('[') && token.endsWith(']')) {
-                  // --- START OF SYNC PARSING ---
-                  let currentPos = finalWords.length;
-                  let posInMeasure = currentPos % config.circlesPerMeasure;
-                  let beatInMeasure = Math.floor(posInMeasure / config.circlesPerBeat);
-                  
-                  // Check if current position is valid
-                  let isValid = (currentPos % 2 === 0) && (beatInMeasure < config.beatsPerMeasure - 1);
+                  const syncGroup = token.slice(1, -1).split(/\s+/).filter(Boolean);
+                  const w1 = syncGroup[0] || '-';
+                  const w2 = syncGroup[1] || '-';
+                  const w3 = syncGroup[2] || '-';
 
-                  if (!isValid) {
-                      let nextPos = currentPos;
-                      if (nextPos % 2 !== 0) { // If on an upbeat, move to next downbeat
-                          nextPos++;
-                      }
-                      
-                      let nextPosInMeasure = nextPos % config.circlesPerMeasure;
-                      let nextBeatInMeasure = Math.floor(nextPosInMeasure / config.circlesPerBeat);
-                      
-                      if (nextBeatInMeasure >= config.beatsPerMeasure - 1) { // If on last beat, move to next measure
-                          nextPos = currentPos - nextPosInMeasure + config.circlesPerMeasure;
-                      }
-
-                      // Add rests to fill the gap
-                      for (let j = currentPos; j < nextPos; j++) {
-                          finalWords.push('-');
-                      }
-                  }
-                  
                   const syncStartIndex = finalWords.length;
                   const syncTriggerPos = syncStartIndex + 1;
                   const affectedBeatStart = syncStartIndex + 2;
 
                   newSyncopation.push(syncTriggerPos);
                   
-                  const syncGroup = token.slice(1, -1).split(/\s+/).filter(Boolean);
-                  const w1 = syncGroup[0] || '-';
-                  const w2 = syncGroup[1] || '-';
-                  const w3 = syncGroup[2] || '-';
-
                   finalWords.push(w1 === '\\' ? '-' : w1);
                   finalWords.push(w2 === '\\' ? '-' : w2);
                   finalWords.push('-');
@@ -825,7 +797,6 @@
 
                   newSyncopationStates[affectedBeatStart] = false;
                   newSyncopationStates[affectedBeatStart + 1] = (w3 !== '-' && w3 !== '\\');
-                  // --- END OF SYNC PARSING ---
               } else {
                   finalWords.push(token === '\\' ? '-' : token);
               }
@@ -1157,7 +1128,76 @@
     return divider;
   }
 
+  function revalidateSyncopations() {
+      const config = getLayoutConfig();
+      if (config.circlesPerBeat !== 2) { // This rhythm only works in simple time
+          syncopation = [];
+          syncopationStates = {};
+          return;
+      }
+      
+      const newSyncopation = [];
+      const newSyncopationStates = {};
+      const finalWords = [];
+      
+      let i = 0;
+      while (i < words.length) {
+          const syncIndex = syncopation.indexOf(i + 1);
+          if (syncIndex !== -1) {
+              let currentPos = finalWords.length;
+              let posInMeasure = currentPos % config.circlesPerMeasure;
+              let beatInMeasure = Math.floor(posInMeasure / config.circlesPerBeat);
+              
+              let isValid = (currentPos % 2 === 0) && (beatInMeasure < config.beatsPerMeasure - 1);
+
+              if (!isValid) {
+                  let nextPos = currentPos;
+                  if (nextPos % 2 !== 0) {
+                      nextPos++;
+                  }
+                  
+                  let nextPosInMeasure = nextPos % config.circlesPerMeasure;
+                  let nextBeatInMeasure = Math.floor(nextPosInMeasure / config.circlesPerBeat);
+                  
+                  if (nextBeatInMeasure >= config.beatsPerMeasure - 1) {
+                      nextPos = currentPos - nextPosInMeasure + config.circlesPerMeasure;
+                  }
+
+                  for (let j = currentPos; j < nextPos; j++) {
+                      finalWords.push('-');
+                  }
+              }
+              
+              const syncStartIndex = finalWords.length;
+              const syncTriggerPos = syncStartIndex + 1;
+              const affectedBeatStart = syncStartIndex + 2;
+
+              newSyncopation.push(syncTriggerPos);
+              
+              const w1 = words[i];
+              const w2 = words[i+1];
+              const w3 = words[i+3];
+
+              finalWords.push(w1, w2, '-', w3);
+              
+              newSyncopationStates[affectedBeatStart] = false;
+              newSyncopationStates[affectedBeatStart + 1] = (w3 !== '-');
+
+              i += 4;
+          } else {
+              finalWords.push(words[i]);
+              i++;
+          }
+      }
+
+      words = finalWords;
+      syncopation = newSyncopation;
+      syncopationStates = newSyncopationStates;
+  }
+
   function render() {
+    revalidateSyncopations(); // Always check syncopation placement before rendering
+
     container.innerHTML = '';
     notesBoxElements = [];
     updateSixteenthNoteButtonState();
