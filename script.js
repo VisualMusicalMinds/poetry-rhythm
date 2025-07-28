@@ -275,32 +275,6 @@
     return false;
   }
 
-  // Check if a position can be syncopated (not on last beat of measure)
-  function canSyncopate(position) {
-    const config = getLayoutConfig();
-    const positionInMeasure = position % config.circlesPerMeasure;
-    const beatInMeasure = Math.floor(positionInMeasure / config.circlesPerBeat);
-    const lastBeatOfMeasure = config.beatsPerMeasure - 1;
-    
-    // Cannot syncopate on the last beat of a measure
-    return beatInMeasure !== lastBeatOfMeasure;
-  }
-
-  // Check if syncopation conditions are met for a position
-  function canCreateSyncopation(position) {
-    // Syncopation is disabled in compound time for now.
-    if (timeSignatureDenominator === 8) return false;
-    
-    // Position must be odd (second circle of a beat)
-    if (position % 2 === 0) return false;
-    
-    // Previous position (first circle) must be active
-    if (position === 0 || words[position - 1] === '-' || words[position - 1] === '') return false;
-    
-    // Must not be the last beat of a measure
-    return canSyncopate(position);
-  }
-
   // Get the syncopation type for a beat (for determining which image to show)
   function getSyncopationType(beatStartPosition) {
     // Check if this beat is affected by a syncopated beat before it
@@ -774,29 +748,42 @@
           const newSyncopationStates = {};
           const finalWords = [];
           
+          const config = getLayoutConfig();
           const tokens = contentText.trim().replace(/\n/g, ' ').split(/(\[[^\]]+\])|\s+/).filter(Boolean);
 
           for(let i=0; i<tokens.length; i++) {
               let token = tokens[i].trim();
               if (token.startsWith('[') && token.endsWith(']')) {
-                  const syncGroup = token.slice(1, -1).split(/\s+/).filter(Boolean);
-                  const w1 = syncGroup[0] || '-';
-                  const w2 = syncGroup[1] || '-';
-                  const w3 = syncGroup[2] || '-';
+                  const syncGroupWords = token.slice(1, -1).split(/\s+/).filter(Boolean);
+                  const w1 = syncGroupWords[0] || '-';
+                  const w2 = syncGroupWords[1] || '-';
+                  const w3 = syncGroupWords[2] || '-';
 
-                  const syncStartIndex = finalWords.length;
-                  const syncTriggerPos = syncStartIndex + 1;
-                  const affectedBeatStart = syncStartIndex + 2;
-
-                  newSyncopation.push(syncTriggerPos);
+                  const currentPos = finalWords.length;
+                  const posInMeasure = currentPos % config.circlesPerMeasure;
+                  const beatInMeasure = Math.floor(posInMeasure / config.circlesPerBeat);
                   
-                  finalWords.push(w1 === '\\' ? '-' : w1);
-                  finalWords.push(w2 === '\\' ? '-' : w2);
-                  finalWords.push('-');
-                  finalWords.push(w3 === '\\' ? '-' : w3);
+                  const isDownbeat = currentPos % 2 === 0;
+                  const hasSpace = beatInMeasure < config.beatsPerMeasure - 1;
 
-                  newSyncopationStates[affectedBeatStart] = false;
-                  newSyncopationStates[affectedBeatStart + 1] = (w3 !== '-' && w3 !== '\\');
+                  if (isDownbeat && hasSpace && config.circlesPerBeat === 2) {
+                      const syncStartIndex = finalWords.length;
+                      const syncTriggerPos = syncStartIndex + 1;
+                      const affectedBeatStart = syncStartIndex + 2;
+
+                      newSyncopation.push(syncTriggerPos);
+                      
+                      finalWords.push(w1 === '\\' ? '-' : w1);
+                      finalWords.push(w2 === '\\' ? '-' : w2);
+                      finalWords.push('-');
+                      finalWords.push(w3 === '\\' ? '-' : w3);
+
+                      newSyncopationStates[affectedBeatStart] = false;
+                      newSyncopationStates[affectedBeatStart + 1] = (w3 !== '-' && w3 !== '\\');
+                  } else {
+                      // Dissolve the group if invalid
+                      finalWords.push(w1 === '\\' ? '-' : w1, w2 === '\\' ? '-' : w2, w3 === '\\' ? '-' : w3);
+                  }
               } else {
                   finalWords.push(token === '\\' ? '-' : token);
               }
@@ -1128,76 +1115,7 @@
     return divider;
   }
 
-  function revalidateSyncopations() {
-      const config = getLayoutConfig();
-      if (config.circlesPerBeat !== 2) { // This rhythm only works in simple time
-          syncopation = [];
-          syncopationStates = {};
-          return;
-      }
-      
-      const newSyncopation = [];
-      const newSyncopationStates = {};
-      const finalWords = [];
-      
-      let i = 0;
-      while (i < words.length) {
-          const syncIndex = syncopation.indexOf(i + 1);
-          if (syncIndex !== -1) {
-              let currentPos = finalWords.length;
-              let posInMeasure = currentPos % config.circlesPerMeasure;
-              let beatInMeasure = Math.floor(posInMeasure / config.circlesPerBeat);
-              
-              let isValid = (currentPos % 2 === 0) && (beatInMeasure < config.beatsPerMeasure - 1);
-
-              if (!isValid) {
-                  let nextPos = currentPos;
-                  if (nextPos % 2 !== 0) {
-                      nextPos++;
-                  }
-                  
-                  let nextPosInMeasure = nextPos % config.circlesPerMeasure;
-                  let nextBeatInMeasure = Math.floor(nextPosInMeasure / config.circlesPerBeat);
-                  
-                  if (nextBeatInMeasure >= config.beatsPerMeasure - 1) {
-                      nextPos = currentPos - nextPosInMeasure + config.circlesPerMeasure;
-                  }
-
-                  for (let j = currentPos; j < nextPos; j++) {
-                      finalWords.push('-');
-                  }
-              }
-              
-              const syncStartIndex = finalWords.length;
-              const syncTriggerPos = syncStartIndex + 1;
-              const affectedBeatStart = syncStartIndex + 2;
-
-              newSyncopation.push(syncTriggerPos);
-              
-              const w1 = words[i];
-              const w2 = words[i+1];
-              const w3 = words[i+3];
-
-              finalWords.push(w1, w2, '-', w3);
-              
-              newSyncopationStates[affectedBeatStart] = false;
-              newSyncopationStates[affectedBeatStart + 1] = (w3 !== '-');
-
-              i += 4;
-          } else {
-              finalWords.push(words[i]);
-              i++;
-          }
-      }
-
-      words = finalWords;
-      syncopation = newSyncopation;
-      syncopationStates = newSyncopationStates;
-  }
-
   function render() {
-    revalidateSyncopations(); // Always check syncopation placement before rendering
-
     container.innerHTML = '';
     notesBoxElements = [];
     updateSixteenthNoteButtonState();
