@@ -275,6 +275,32 @@
     return false;
   }
 
+  // Check if a position can be syncopated (not on last beat of measure)
+  function canSyncopate(position) {
+    const config = getLayoutConfig();
+    const positionInMeasure = position % config.circlesPerMeasure;
+    const beatInMeasure = Math.floor(positionInMeasure / config.circlesPerBeat);
+    const lastBeatOfMeasure = config.beatsPerMeasure - 1;
+    
+    // Cannot syncopate on the last beat of a measure
+    return beatInMeasure !== lastBeatOfMeasure;
+  }
+
+  // Check if syncopation conditions are met for a position
+  function canCreateSyncopation(position) {
+    // Syncopation is disabled in compound time for now.
+    if (timeSignatureDenominator === 8) return false;
+    
+    // Position must be odd (second circle of a beat)
+    if (position % 2 === 0) return false;
+    
+    // Previous position (first circle) must be active
+    if (position === 0 || words[position - 1] === '-' || words[position - 1] === '') return false;
+    
+    // Must not be the last beat of a measure
+    return canSyncopate(position);
+  }
+
   // Get the syncopation type for a beat (for determining which image to show)
   function getSyncopationType(beatStartPosition) {
     // Check if this beat is affected by a syncopated beat before it
@@ -1102,61 +1128,75 @@
     return divider;
   }
 
-  function validateSyncopationPositions() {
+  function revalidateSyncopations() {
       const config = getLayoutConfig();
-      const syncsToDissolve = [];
-
-      for (const syncTriggerPos of syncopation) {
-          const startIndex = syncTriggerPos - 1;
-          const isDownbeat = startIndex % 2 === 0;
-          const posInMeasure = startIndex % config.circlesPerMeasure;
-          const beatInMeasure = Math.floor(posInMeasure / config.circlesPerBeat);
-          const hasSpace = beatInMeasure < config.beatsPerMeasure - 1;
-          const isValidTimeSig = config.circlesPerBeat === 2;
-
-          if (!isDownbeat || !hasSpace || !isValidTimeSig) {
-              syncsToDissolve.push(syncTriggerPos);
-          }
+      if (config.circlesPerBeat !== 2) { // This rhythm only works in simple time
+          syncopation = [];
+          syncopationStates = {};
+          return;
       }
-
-      if (syncsToDissolve.length === 0) {
-          return false; // No changes were made
-      }
-
-      const newWords = [];
+      
+      const newSyncopation = [];
+      const newSyncopationStates = {};
+      const finalWords = [];
+      
       let i = 0;
       while (i < words.length) {
-          const currentSyncTrigger = i + 1;
-          if (syncopation.includes(currentSyncTrigger) && syncsToDissolve.includes(currentSyncTrigger)) {
-              // This is an invalid syncopation, dissolve it.
-              newWords.push(words[i], words[i+1], words[i+3]);
+          const syncIndex = syncopation.indexOf(i + 1);
+          if (syncIndex !== -1) {
+              let currentPos = finalWords.length;
+              let posInMeasure = currentPos % config.circlesPerMeasure;
+              let beatInMeasure = Math.floor(posInMeasure / config.circlesPerBeat);
+              
+              let isValid = (currentPos % 2 === 0) && (beatInMeasure < config.beatsPerMeasure - 1);
+
+              if (!isValid) {
+                  let nextPos = currentPos;
+                  if (nextPos % 2 !== 0) {
+                      nextPos++;
+                  }
+                  
+                  let nextPosInMeasure = nextPos % config.circlesPerMeasure;
+                  let nextBeatInMeasure = Math.floor(nextPosInMeasure / config.circlesPerBeat);
+                  
+                  if (nextBeatInMeasure >= config.beatsPerMeasure - 1) {
+                      nextPos = currentPos - nextPosInMeasure + config.circlesPerMeasure;
+                  }
+
+                  for (let j = currentPos; j < nextPos; j++) {
+                      finalWords.push('-');
+                  }
+              }
+              
+              const syncStartIndex = finalWords.length;
+              const syncTriggerPos = syncStartIndex + 1;
+              const affectedBeatStart = syncStartIndex + 2;
+
+              newSyncopation.push(syncTriggerPos);
+              
+              const w1 = words[i];
+              const w2 = words[i+1];
+              const w3 = words[i+3];
+
+              finalWords.push(w1, w2, '-', w3);
+              
+              newSyncopationStates[affectedBeatStart] = false;
+              newSyncopationStates[affectedBeatStart + 1] = (w3 !== '-');
+
               i += 4;
           } else {
-              newWords.push(words[i]);
+              finalWords.push(words[i]);
               i++;
           }
       }
-      words = newWords;
 
-      // Filter out the dissolved syncopations
-      syncopation = syncopation.filter(pos => !syncsToDissolve.includes(pos));
-      
-      // Clear out old states (simpler than trying to remap them)
-      syncopationStates = {};
-
-      return true; // Changes were made
+      words = finalWords;
+      syncopation = newSyncopation;
+      syncopationStates = newSyncopationStates;
   }
 
   function render() {
-    // If validation makes changes, we need to re-render to show them.
-    // This prevents trying to render a broken state.
-    if (validateSyncopationPositions()) {
-        // The validation function changed the arrays, so we immediately call render again
-        // with the corrected data. The second time, validation will pass and the
-        // function will return false, allowing the rest of the render to proceed.
-        render();
-        return;
-    }
+    revalidateSyncopations(); // Always check syncopation placement before rendering
 
     container.innerHTML = '';
     notesBoxElements = [];
