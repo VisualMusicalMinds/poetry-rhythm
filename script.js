@@ -131,40 +131,8 @@
 
   // Convert the current words array to text with proper spacing that reflects rhythm
   function wordsToText() {
-    let result = '';
-    let i = 0;
-    
-    while (i < words.length) {
-      const word = words[i];
-      
-      if (word !== '-' && word !== '') {
-        // Add the word
-        result += word;
-        
-        // Count how many empty circles (rests) follow this word
-        let restCount = 0;
-        let j = i + 1;
-        
-        // Look ahead to count consecutive rests or empty positions
-        while (j < words.length && (words[j] === '-' || words[j] === '')) {
-          restCount++;
-          j++;
-        }
-        
-        // Add spaces: 1 space for the natural word boundary, plus 1 space for each rest
-        const totalSpaces = 1 + restCount;
-        result += ' '.repeat(totalSpaces);
-        
-        // Move to the position after all the rests
-        i = j;
-      } else {
-        // Skip isolated rests (they'll be handled by the word that precedes them)
-        i++;
-      }
-    }
-    
-    // Clean up any trailing spaces
-    return result.trimEnd();
+    // Convert rests ('-' or '') to '\' and join with spaces.
+    return words.map(word => (word === '-' || word === '') ? '\\' : word).join(' ');
   }
 
   // Copy text to clipboard
@@ -754,7 +722,8 @@
           // Save the text for future use
           savedTextInput = text;
           
-          const newWords = text.replace(/\n/g, ' ').split(' ').map(word => word === '' ? '-' : word);
+          // Split by space, handle newlines, filter empty, and map '\' to rests.
+          const newWords = text.replace(/\n/g, ' ').split(' ').filter(w => w.length > 0).map(word => word === '\\' ? '-' : word);
 
           if (textImportMode === 'replace') {
               words = newWords;
