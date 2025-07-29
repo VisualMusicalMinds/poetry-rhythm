@@ -916,6 +916,42 @@
 
   // --- RENDERING LOGIC ---
 
+  function dismantleSyncopation(syncStartIndex) {
+      const syncTriggerPos = syncStartIndex + 1;
+      const syncopationIndex = syncopation.indexOf(syncTriggerPos);
+  
+      if (syncopationIndex === -1) return; // Not a valid syncopation start
+  
+      // Ensure the group is intact before trying to dismantle
+      if (syncStartIndex + 3 < words.length && words[syncStartIndex + 2] === '-') {
+          const w1 = words[syncStartIndex];
+          const w2 = words[syncStartIndex + 1];
+          const w3 = words[syncStartIndex + 3];
+  
+          const replacement = [];
+          if (w1 !== '-') replacement.push(w1);
+          if (w2 !== '-') replacement.push(w2);
+          if (w3 !== '-') replacement.push(w3);
+  
+          // Replace the 4-element syncopation group with its preserved words.
+          words.splice(syncStartIndex, 4, ...replacement);
+  
+          // Clean up the corresponding syncopation data.
+          const affectedBeatStart = syncStartIndex + 2;
+          delete syncopationStates[affectedBeatStart];
+          delete syncopationStates[affectedBeatStart + 1];
+          syncopation.splice(syncopationIndex, 1);
+  
+          // Adjust subsequent syncopation indices due to the change in array length.
+          const lengthChange = replacement.length - 4;
+          for (let i = 0; i < syncopation.length; i++) {
+              if (syncopation[i] > syncTriggerPos) {
+                  syncopation[i] += lengthChange;
+              }
+          }
+      }
+  }
+
   function createBeatGroup(beatStartPosition, config, displayWords) {
     const group = document.createElement('div');
     group.className = 'group';
@@ -947,20 +983,24 @@
             circle.classList.add('active');
         }
         circle.addEventListener('click', () => {
+            // Proactively dismantle any syncopation that would be broken by this action.
+            // A syncopation is broken if a word is added/removed right before it.
+            for (let i = syncopation.length - 1; i >= 0; i--) {
+                const syncTriggerPos = syncopation[i];
+                const syncStartIndex = syncTriggerPos - 1;
+                // If the click is right before a syncopation group, dismantle it first.
+                if (idx === syncStartIndex -1 || idx === syncStartIndex) {
+                    dismantleSyncopation(syncStartIndex);
+                }
+            }
+
             while (words.length <= idx) {
                 words.push('-');
             }
 
             // If the user clicks the green syncopation trigger, undo it.
             if (syncopation.includes(idx)) {
-                const syncopationIndex = syncopation.indexOf(idx);
-                syncopation.splice(syncopationIndex, 1);
-                
-                // Remove the placeholder rest and clean up states
-                words.splice(idx + 1, 1);
-                delete syncopationStates[idx + 1];
-                delete syncopationStates[idx + 2];
-                
+                dismantleSyncopation(idx);
                 render();
                 return;
             }
@@ -1130,19 +1170,16 @@
 
   function revalidateSyncopations() {
       const config = getLayoutConfig();
-  
       // If syncopation is not possible (e.g., in compound time), dismantle all existing syncopations.
       if (config.circlesPerBeat !== 2) {
           if (syncopation.length > 0) {
               const newWords = [];
               for (let i = 0; i < words.length; i++) {
-                  // Check if the current position is the start of a syncopation group
                   if (syncopation.includes(i + 1)) {
-                      // This is a syncopation group. Dismantle it by adding its words.
-                      if (words[i] !== '-') newWords.push(words[i]);     // w1
-                      if (words[i + 1] !== '-') newWords.push(words[i + 1]); // w2
-                      if (words[i + 3] !== '-') newWords.push(words[i + 3]); // w3
-                      i += 3; // Skip over the 4-element syncopation structure.
+                      if (words[i] !== '-') newWords.push(words[i]);
+                      if (words[i + 1] !== '-') newWords.push(words[i + 1]);
+                      if (words[i + 3] !== '-') newWords.push(words[i + 3]);
+                      i += 3;
                   } else {
                       newWords.push(words[i]);
                   }
@@ -1154,12 +1191,11 @@
           return;
       }
   
-      // Use a reverse loop to safely modify the array while iterating.
+      // Now, check if any remaining syncopations have become invalid due to their position.
       for (let i = syncopation.length - 1; i >= 0; i--) {
           const syncTriggerPos = syncopation[i];
           const syncStartIndex = syncTriggerPos - 1;
   
-          // Validation checks
           const isEvenPosition = syncStartIndex % 2 === 0;
           const positionInMeasure = syncStartIndex % config.circlesPerMeasure;
           const beatInMeasure = Math.floor(positionInMeasure / config.circlesPerBeat);
@@ -1167,48 +1203,9 @@
           const isGroupIntact = syncStartIndex + 3 < words.length && words[syncStartIndex + 2] === '-';
   
           if (!isEvenPosition || isLastBeat || !isGroupIntact) {
-              // This syncopation is no longer valid. Dismantle it.
-              const w1 = words[syncStartIndex];
-              const w2 = words[syncStartIndex + 1];
-              const w3 = words[syncStartIndex + 3];
-  
-              const replacement = [];
-              if (w1 !== '-') replacement.push(w1);
-              if (w2 !== '-') replacement.push(w2);
-              if (w3 !== '-') replacement.push(w3);
-              
-              // Replace the 4-element syncopation group with its preserved words.
-              words.splice(syncStartIndex, 4, ...replacement);
-  
-              // Clean up the corresponding syncopation data.
-              const affectedBeatStart = syncStartIndex + 2;
-              delete syncopationStates[affectedBeatStart];
-              delete syncopationStates[affectedBeatStart + 1];
-              syncopation.splice(i, 1);
+              dismantleSyncopation(syncStartIndex);
           }
       }
-  
-      // After dismantling, we need to resynchronize the remaining syncopation indices
-      // because the length of the `words` array has changed.
-      const newSyncopation = [];
-      const newSyncopationStates = {};
-      let i = 0;
-      while (i < words.length) {
-          // Check if this looks like a syncopation group that should have been kept
-          if (syncopation.includes(i + 1)) {
-              const syncTriggerPos = i + 1;
-              newSyncopation.push(syncTriggerPos);
-              
-              const affectedBeatStart = i + 2;
-              newSyncopationStates[affectedBeatStart] = syncopationStates[affectedBeatStart];
-              newSyncopationStates[affectedBeatStart + 1] = syncopationStates[affectedBeatStart + 1];
-              i += 4; // Skip the intact group
-          } else {
-              i++;
-          }
-      }
-      syncopation = newSyncopation;
-      syncopationStates = newSyncopationStates;
   }
 
   function render() {
