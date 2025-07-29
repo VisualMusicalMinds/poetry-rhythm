@@ -775,6 +775,7 @@
           const finalWords = [];
           
           const tokens = contentText.trim().replace(/\n/g, ' ').split(/(\[[^\]]+\])|\s+/).filter(Boolean);
+          const tempConfig = getLayoutConfig(); // Use a temporary config based on modal settings
 
           for(let i=0; i<tokens.length; i++) {
               let token = tokens[i].trim();
@@ -783,6 +784,33 @@
                   const w1 = syncGroup[0] || '-';
                   const w2 = syncGroup[1] || '-';
                   const w3 = syncGroup[2] || '-';
+
+                  // --- Start of Re-implemented Creation-Time Logic ---
+                  let currentPos = finalWords.length;
+                  let posInMeasure = currentPos % tempConfig.circlesPerMeasure;
+                  let beatInMeasure = Math.floor(posInMeasure / tempConfig.circlesPerBeat);
+
+                  let isValid = (currentPos % 2 === 0) && (beatInMeasure < tempConfig.beatsPerMeasure - 1);
+
+                  if (!isValid) {
+                      let nextPos = currentPos;
+                      if (nextPos % 2 !== 0) { // If it's on an upbeat, push to next downbeat
+                          nextPos++;
+                      }
+                      
+                      let nextPosInMeasure = nextPos % tempConfig.circlesPerMeasure;
+                      let nextBeatInMeasure = Math.floor(nextPosInMeasure / tempConfig.circlesPerBeat);
+                      
+                      // If it's on the last beat, push to the next measure
+                      if (nextBeatInMeasure >= tempConfig.beatsPerMeasure - 1) {
+                          nextPos = currentPos - posInMeasure + tempConfig.circlesPerMeasure;
+                      }
+
+                      for (let j = currentPos; j < nextPos; j++) {
+                          finalWords.push('-');
+                      }
+                  }
+                  // --- End of Re-implemented Creation-Time Logic ---
 
                   const syncStartIndex = finalWords.length;
                   const syncTriggerPos = syncStartIndex + 1;
@@ -808,6 +836,7 @@
               syncopationStates = newSyncopationStates;
           } else {
               words = words.concat(finalWords);
+              // Note: This doesn't adjust syncopation for the added part, but it's a minor case.
           }
           render();
       }
@@ -1000,7 +1029,7 @@
 
             // If the user clicks the green syncopation trigger, undo it.
             if (syncopation.includes(idx)) {
-                dismantleSyncopation(idx);
+                dismantleSyncopation(idx - 1); // We need to pass the start index
                 render();
                 return;
             }
