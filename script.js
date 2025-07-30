@@ -3,7 +3,7 @@
 
   const lyricsLibrary = {
     'new-song': [
-        'Start', 'Here'
+        'Press', 'the', 'lyrics', 'to', 'edit.', 'Spacebar', 'moves', 'foward,', 'backspace', 'moves', 'back.'
     ],
     'instructions': {
         bpm: 120,
