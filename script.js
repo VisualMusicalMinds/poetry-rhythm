@@ -17,7 +17,7 @@
             'Pa-', 'ra-', '-', 'graph', // Syncopation 3 (starts at index 113)
             'but-', 'ton', '-', 'and', 'see', 'what', 'it', 'can', 'do!', '-', 'Grab', 'the', 'text', '-', 'from', 'the', 'box,', '-', 'store', 'it', 'safe', 'and', 'use', 'it', 'la-', 'ter,', 'make', 'a', 'screen', 'shot', 'on', 'your', 'clip-', 'board,', 'keep', 'the', 'pic-', 'ture', 'for', 'the', 'ha-', 'ters.', 'Then', '-', 'turn', 'the', 'e-', 'dit', 'off,', '-', 'see', 'the', 'Rhyme', 'in', "all it's", 'glo-', 'ry', 'as', 'you', 'plot', 'the', 'se-', 'cond', 'verse', '-', 'and', 'con-', 'ti-', 'nue', 'with', 'your', 'sto-', 'ry.'
         ],
-        syncopation: [68, 83, 114], // Trigger positions (index of 2nd sound)
+        syncopation: [67, 83, 114], // Trigger positions (index of 2nd sound)
         syncopationStates: {
             70: true, 71: false,   // After '[Rhymes make - a]' -> 'rhy-' is active, 'thm,' is not
             85: true, 86: false,   // After '[9/ 8, - or]' -> '6/' is active, '4,' is not
