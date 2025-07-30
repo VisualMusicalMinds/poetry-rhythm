@@ -10,7 +10,7 @@
         pickup: true,
         words: [
             'Hel-', '-', 'lo', '-', '-', 'and', 'wel-', 'come!', '-', '-', "Let's", '-', 'write', 'a', 'verse.', '-', 'We', 'can', 'start', '-', 'with', 'the', 'but-', 'tons', '-', 'to', 'help', 'you', 're-', '-', 'hearse.', '-', 'On', 'the', 'left,', 'the', 'but-', 'ton', 'Play,', '-', '-', "you'll", 'want', 'to', 'press', '-', 'that.', '-', 'B', 'P', 'M', 'to', 'set', 'the', 'beat,', '-', 'Green', 'and', 'Blue', 'just', 'mix', 'and', 'match.', '-', 'Pre-', 'load',
-            'Rhymes', 'make', 'a', // Syncopation 1 (starts at index 67)
+            'Rhymes', 'make', '-', 'a', // Syncopation 1 (starts at index 67)
             'rhy-', 'thm,', '-', '-', 'pick', 'the', 'one', 'you', 'want.', '-', 'Switch', 'to',
             '9/', '8,', '-', 'or', // Syncopation 2 (starts at index 82)
             '6/', '4,', '-', 'use', 'six-', 'teenth', 'notes', 'too', 'much.', '-', '-', 'But', 'when', 'you', 'want', 'to', 'save,', '-', 'make', 'an', 'ed-', 'it,', 'add', "what's", 'new...', '-', 'Press', 'the',
@@ -19,7 +19,7 @@
         ],
         syncopation: [67, 83, 114], // Trigger positions (index of 2nd sound)
         syncopationStates: {
-            70: true, 71: false,   // After '[Rhymes make - a]' -> 'rhy-' is active, 'thm,' is not
+            69: true, 70: false,   // After '[Rhymes make - a]' -> 'rhy-' is active, 'thm,' is not
             85: true, 86: false,   // After '[9/ 8, - or]' -> '6/' is active, '4,' is not
             116: true, 117: false  // After '[Pa- ra- - graph]' -> 'but-' is active, 'ton' is not
         }
