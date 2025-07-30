@@ -17,11 +17,11 @@
             'Pa-', 'ra-', '-', 'graph', // Syncopation 3 (starts at index 113)
             'but-', 'ton', '-', 'and', 'see', 'what', 'it', 'can', 'do!', '-', 'Grab', 'the', 'text', '-', 'from', 'the', 'box,', '-', 'store', 'it', 'safe', 'and', 'use', 'it', 'la-', 'ter,', 'make', 'a', 'screen', 'shot', 'on', 'your', 'clip-', 'board,', 'keep', 'the', 'pic-', 'ture', 'for', 'the', 'ha-', 'ters.', 'Then', '-', 'turn', 'the', 'e-', 'dit', 'off,', '-', 'see', 'the', 'Rhyme', 'in', "all it's", 'glo-', 'ry', 'as', 'you', 'plot', 'the', 'se-', 'cond', 'verse', '-', 'and', 'con-', 'ti-', 'nue', 'with', 'your', 'sto-', 'ry.'
         ],
-        syncopation: [67, 83, 114], // Trigger positions (index of 2nd sound)
+        syncopation: [67, 83, 115], // Trigger positions (index of 2nd sound)
         syncopationStates: {
             69: true, 70: false,   // After '[Rhymes make - a]' -> 'rhy-' is active, 'thm,' is not
             85: true, 86: false,   // After '[9/ 8, - or]' -> '6/' is active, '4,' is not
-            116: true, 117: false  // After '[Pa- ra- - graph]' -> 'but-' is active, 'ton' is not
+            117: true, 118: false  // After '[Pa- ra- - graph]' -> 'but-' is active, 'ton' is not
         }
     },
     'hickory-dickory-dock': [
