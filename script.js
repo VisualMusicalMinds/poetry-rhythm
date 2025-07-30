@@ -5,6 +5,12 @@
     'new-song': [
         'Start', 'Here'
     ],
+    'welcome-song': {
+        pickup: true,
+        words: [
+            'Hel-', '-', 'lo', '-', '-', 'and', 'wel-', 'come!', '-', '-', 'Let\'s', '-', 'write', 'a', 'verse.', '-', 'We', 'can', 'start', '-', 'with', 'the', 'but-', 'tons', '-', 'to', 'help', 'you', 're-', '-', 'hearse.'
+        ]
+    },
     'hickory-dickory-dock': [
       'Hick-', 'o-', 'ry', 'dick-', 'o-', 'ry', 'dock,',
       'The', 'mouse', 'ran', 'up', 'the', 'clock.',
@@ -506,12 +512,23 @@
   }
   lyricsDropdown.addEventListener('change', (e) => {
     const selectedKey = e.target.value;
-    if (lyricsLibrary[selectedKey]) {
-      words = lyricsLibrary[selectedKey].slice();
-      syncopation = []; // Reset syncopation when changing songs
-      syncopationStates = {};
-      hasPickupMeasure = false; // Reset pickup on song change
-      render();
+    const songData = lyricsLibrary[selectedKey];
+
+    if (songData) {
+        // Check if the song data is in the new object format or the old array format
+        if (Array.isArray(songData)) {
+            // Old format: just an array of words
+            words = songData.slice();
+            hasPickupMeasure = false; // Reset pickup for older format songs
+        } else {
+            // New format: an object with words and properties
+            words = songData.words.slice();
+            hasPickupMeasure = songData.pickup || false;
+        }
+        
+        syncopation = []; // Reset syncopation when changing songs
+        syncopationStates = {};
+        render();
     }
   });
 
