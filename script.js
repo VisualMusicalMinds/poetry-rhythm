@@ -5,11 +5,17 @@
     'new-song': [
         'Start', 'Here'
     ],
-    'welcome-song': {
+    'instructions': {
         pickup: true,
         words: [
-            'Hel-', '-', 'lo', '-', '-', 'and', 'wel-', 'come!', '-', '-', 'Let\'s', '-', 'write', 'a', 'verse.', '-', 'We', 'can', 'start', '-', 'with', 'the', 'but-', 'tons', '-', 'to', 'help', 'you', 're-', '-', 'hearse.'
-        ]
+            'Hel-', '-', 'lo', '-', '-', 'and', 'wel-', 'come!', '-', '-', "Let's", '-', 'write', 'a', 'verse.', '-', 'We', 'can', 'start', '-', 'with', 'the', 'but-', 'tons', '-', 'to', 'help', 'you', 're-', '-', 'hearse.', '-', 'On', 'the', 'left,', 'the', 'but-', 'ton', 'Play,', '-', '-', "you'll", 'want', 'to', 'press', '-', 'that.', '-', 'B', 'P', 'M', 'to', 'set', 'the', 'beat,', '-', 'Green', 'and', 'Blue', 'just', 'mix', 'and', 'match.', '-', 'Pre-', 'load', 'Rhymes', 'make', '-', 'a', 'rhy-', 'thm,', '-', '-', 'pick', 'the', 'one', 'you', 'want.', '-', 'Switch', 'to', '9/', '8,', '-', 'or', '6/', '4,', '-', 'use', 'six-', 'teenth', 'notes', 'too', 'much.', '-', '-', 'But', 'when', 'you', 'want', 'to', 'save,', '-', 'make', 'an', 'ed-', 'it,', 'add', "what's", 'new...', '-', 'Press', 'the', 'Pa-', 'ra-', '-', 'graph', 'but-', 'ton', '-', 'and', 'see', 'what', 'it', 'can', 'do!', '-', 'Grab', 'the', 'text', '-', 'from', 'the', 'box,', '-', 'store', 'it', 'safe', 'and', 'use', 'it', 'la-', 'ter,', 'make', 'a', 'screen', 'shot', 'on', 'your', 'clip-', 'board,', 'keep', 'the', 'pic-', 'ture', 'for', 'the', 'ha-', 'ters.', 'Then', '-', 'turn', 'the', 'e-', 'dit', 'off,', '-', 'see', 'the', 'Rhyme', 'in', "all it's", 'glo-', 'ry', 'as', 'you', 'plot', 'the', 'se-', 'cond', 'verse', '-', 'and', 'con-', 'ti-', 'nue', 'with', 'your', 'sto-', 'ry.'
+        ],
+        syncopation: [61, 89, 117],
+        syncopationStates: {
+            62: false, 63: true,
+            90: true, 91: true,
+            118: false, 119: true
+        }
     },
     'hickory-dickory-dock': [
       'Hick-', 'o-', 'ry', 'dick-', 'o-', 'ry', 'dock,',
@@ -515,19 +521,27 @@
     const songData = lyricsLibrary[selectedKey];
 
     if (songData) {
+        // Reset song-specific properties
+        syncopation = [];
+        syncopationStates = {};
+        hasPickupMeasure = false;
+
         // Check if the song data is in the new object format or the old array format
         if (Array.isArray(songData)) {
             // Old format: just an array of words
             words = songData.slice();
-            hasPickupMeasure = false; // Reset pickup for older format songs
         } else {
-            // New format: an object with words and properties
+            // New format: an object with properties
             words = songData.words.slice();
             hasPickupMeasure = songData.pickup || false;
+            if (songData.syncopation) {
+                syncopation = songData.syncopation.slice();
+            }
+            if (songData.syncopationStates) {
+                syncopationStates = { ...songData.syncopationStates };
+            }
         }
         
-        syncopation = []; // Reset syncopation when changing songs
-        syncopationStates = {};
         render();
     }
   });
