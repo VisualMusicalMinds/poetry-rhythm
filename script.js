@@ -413,14 +413,18 @@
     if (!element) return;
     const elementRect = element.getBoundingClientRect();
     const windowHeight = window.innerHeight;
-    const floatingPanelHeight = 60;
-    const margin = 100;
-    const effectiveViewHeight = windowHeight - floatingPanelHeight;
-    const isAboveView = elementRect.top < margin;
-    const isBelowView = elementRect.bottom > effectiveViewHeight - margin;
-    if (isAboveView || isBelowView) {
-      const elementTop = elementRect.top + window.pageYOffset;
-      const targetY = elementTop - (effectiveViewHeight / 2) + (elementRect.height / 2);
+    const floatingPanelHeight = 60; // The height of the bottom control panel
+
+    // Calculate the ideal vertical center of the screen, accounting for the floating panel
+    const viewCenterY = (windowHeight - floatingPanelHeight) / 2;
+
+    // Check if the element is more than a small tolerance away from the center
+    const tolerance = 50; // A 50px tolerance zone around the center
+    if (Math.abs(elementRect.top - viewCenterY) > tolerance) {
+      const elementTopInDocument = elementRect.top + window.pageYOffset;
+      // Calculate the target scroll position to place the element in the center
+      const targetY = elementTopInDocument - viewCenterY + (elementRect.height / 2);
+      
       window.scrollTo({ top: Math.max(0, targetY), behavior: 'smooth' });
     }
   }
