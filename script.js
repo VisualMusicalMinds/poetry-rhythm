@@ -8,14 +8,14 @@
     'instructions': {
         bpm: 120,
         pickup: true,
-      words: [
-            'Hel-', '-', 'lo', '-', '-', 'and', 'wel-', 'come!', '-', '-', "Let's", '-', 'write', 'a', 'verse.', '-', 'We', 'can', 'start', '-', 'with', 'the', 'but-', 'tons', '-', 'to', 'help', 'you', 're-', '-', 'hearse.', '-', 'On', 'the', 'left,', 'the', 'but-', 'ton', 'Play,', '-', '-', "you'll", 'want', 'to', 'press', '-', 'that.', '-', 'B', 'P', 'M', 'to', 'set', 'the', 'beat,', '-', 'Green', 'and', 'Blue', 'just', 'mix', 'and', 'match.', '-', 'Pre-', 'load',
+        words: [
+            'Hel-', '-', 'lo', '-', '-', 'and', 'wel-', 'come!', '-', '-', "Let's", '-', 'write', 'a', 'verse.', '-', 'We', 'can', 'start', '-', 'with', 'the', 'but-', 'tons', '-', 'to', 'help', 'you',
             'Rhymes', 'make', '-', 'a', // Syncopation 1 (starts at index 67)
             'rhy-', 'thm,', '-', '-', 'pick', 'the', 'one', 'you', 'want.', '-', 'Switch', 'to',
             '9/', '8,', '-', 'or', // Syncopation 2 (starts at index 82)
-            '6/', '4,', '-', 'use', 'six-', 'teenth', 'notes', 'too', 'much.', '-', '-', 'But', 'when', 'you', 'want', 'to', 'save,', '-', 'make', 'an', 'ed-', 'it,', 'add', "what's", 'new...', '-', 'Press', 'the',
+            '6/', '4,', '-', 'use', 'six-', 'teenth', 'notes', 'too', 'much.', '-', '-', 'But', 'when', 'you', 'want', 'to', 'save,', '-', 'make', 'an', 'ed-', 'it,', 'add', "what's", 'new...', '-',
             'Pa-', 'ra-', '-', 'graph', // Syncopation 3 (starts at index 113)
-            'but-', 'ton', '-', 'and', 'see', 'what', 'it', 'can', 'do!', '-', 'Grab', 'the', 'text', '-', 'from', 'the', 'box,', '-', 'store', 'it', 'safe', 'and', 'use', 'it', 'la-', 'ter,', 'make', 'a', 'screen', 'shot', 'on', 'your', 'clip-', 'board,', 'keep', 'the', 'pic-', 'ture', 'for', 'the', 'ha-', 'ters.', 'Then', '-', 'turn', 'the', 'e-', 'dit', 'off,', '-', 'see', 'the', 'Rhyme', 'in', 'all', 'its', 'glo-', 'ry', 'as', 'you', 'plot', 'the', 'se-', 'cond', 'verse', '-', 'and', 'con-', 'ti-', 'nue', 'with', 'your', 'sto-', 'ry.'
+            'but-', 'ton', '-', 'and', 'see', 'what', 'it', 'can', 'do!', '-', 'Grab', 'the', 'text', '-', 'from', 'the', 'box,', '-', 'store', 'it', 'safe', 'and', 'use', 'it', 'la-', 'ter,', 'make'
         ],
         syncopation: [67, 83, 115], // Trigger positions (index of 2nd sound)
         syncopationStates: {
@@ -127,8 +127,9 @@
   let timeSignatureNumerator = 4;
   let timeSignatureDenominator = 4;
   let sixteenthNoteModeActive = false;
+  let originalEighthNotePattern = []; // Store the original 8th note pattern
   let hasPickupMeasure = false;
-  let isFirstPlay = true; // Add this new line
+  let isFirstPlay = true;
   let isPlaying = false;
   let playTimeouts = [];
   let currentPlayPosition = 0;
@@ -341,6 +342,37 @@
     return null;
   }
 
+  // Convert 8th note pattern to 16th note pattern by inserting inactive notes
+  function convertTo16thNotePattern(eighthNoteWords) {
+    const sixteenthNoteWords = [];
+    for (let i = 0; i < eighthNoteWords.length; i += 2) {
+      // For each beat (2 eighth notes), expand to 4 sixteenth notes
+      const firstEighth = eighthNoteWords[i] || '-';
+      const secondEighth = eighthNoteWords[i+1] || '-';
+      
+      // Add the first eighth note
+      sixteenthNoteWords.push(firstEighth);
+      // Add an inactive note after the first eighth note
+      sixteenthNoteWords.push('-');
+      // Add the second eighth note
+      sixteenthNoteWords.push(secondEighth);
+      // Add an inactive note after the second eighth note
+      sixteenthNoteWords.push('-');
+    }
+    return sixteenthNoteWords;
+  }
+
+  // Convert 16th note pattern back to 8th note pattern by removing inactive notes
+  function convertTo8thNotePattern(sixteenthNoteWords) {
+    const eighthNoteWords = [];
+    for (let i = 0; i < sixteenthNoteWords.length; i += 4) {
+      // For each beat (4 sixteenth notes), compress to 2 eighth notes
+      eighthNoteWords.push(sixteenthNoteWords[i] || '-');
+      eighthNoteWords.push(sixteenthNoteWords[i+2] || '-');
+    }
+    return eighthNoteWords;
+  }
+
   // Check if a position should be considered active (for rhythm and display)
   function isPositionActive(position, wordArray) {
     if (isAffectedBySyncopation(position)) {
@@ -489,8 +521,7 @@
       circlesPerLine: measuresPerLine * circlesPerMeasure
     };
   }
-
-  // --- UI ELEMENT SETUP ---
+    // --- UI ELEMENT SETUP ---
 
   // Panel Toggle Button
   const panelToggleButton = document.getElementById('panel-toggle-button');
@@ -558,6 +589,13 @@
             }
         }
         
+        // Reset to 8th note mode when changing songs
+        if (sixteenthNoteModeActive) {
+            sixteenthNoteModeActive = false;
+            sixteenthNoteBtn.classList.remove('active');
+            originalEighthNotePattern = [];
+        }
+        
         render();
     }
   });
@@ -597,10 +635,27 @@
       }
     }
     timeSignatureTopBtn.textContent = timeSignatureNumerator;
+    
+    // Reset to 8th note mode when changing time signature
+    if (sixteenthNoteModeActive) {
+        sixteenthNoteModeActive = false;
+        sixteenthNoteBtn.classList.remove('active');
+        words = originalEighthNotePattern.slice();
+        originalEighthNotePattern = [];
+    }
+    
     render();
   });
 
   timeSignatureBottomBtn.addEventListener('click', () => {
+    // Reset to 8th note mode when changing time signature
+    if (sixteenthNoteModeActive) {
+        sixteenthNoteModeActive = false;
+        sixteenthNoteBtn.classList.remove('active');
+        words = originalEighthNotePattern.slice();
+        originalEighthNotePattern = [];
+    }
+    
     if (timeSignatureDenominator === 4) {
       timeSignatureDenominator = 8;
       timeSignatureNumerator = 6; // Default for compound time
@@ -799,9 +854,11 @@
                   if (timeSignatureDenominator === 8) {
                       sixteenthNoteModeActive = false;
                   } else {
-                      sixteenthNoteModeActive = (sixteenthMatch[1] === 'yes');
+                      const newSixteenthModeActive = (sixteenthMatch[1] === 'yes');
+                      // Don't toggle the 16th note mode yet; it will be handled properly when processing the content
+                      sixteenthNoteModeActive = newSixteenthModeActive;
+                      sixteenthNoteBtn.classList.toggle('active', newSixteenthModeActive);
                   }
-                  sixteenthNoteBtn.classList.toggle('active', sixteenthNoteModeActive);
               }
               updateSixteenthNoteButtonState();
               
@@ -894,7 +951,26 @@
   const sixteenthNoteBtn = document.getElementById('sixteenth-note-btn');
   sixteenthNoteBtn.addEventListener('click', () => {
       if (timeSignatureDenominator === 4) {
-          sixteenthNoteModeActive = !sixteenthNoteModeActive;
+          // Toggle 16th note mode
+          if (sixteenthNoteModeActive) {
+              // Switch back to 8th note mode
+              sixteenthNoteModeActive = false;
+              if (originalEighthNotePattern.length > 0) {
+                  words = originalEighthNotePattern.slice();
+                  originalEighthNotePattern = [];
+              } else {
+                  // Fallback: convert current pattern to 8th note pattern
+                  words = convertTo8thNotePattern(words);
+              }
+          } else {
+              // Switch to 16th note mode
+              sixteenthNoteModeActive = true;
+              // Store the original 8th note pattern
+              originalEighthNotePattern = words.slice();
+              // Convert to 16th note pattern
+              words = convertTo16thNotePattern(words);
+          }
+          
           sixteenthNoteBtn.classList.toggle('active', sixteenthNoteModeActive);
           render();
       }
@@ -913,7 +989,7 @@
 
   // --- PLAYBACK LOGIC ---
 
-      function startPlayback() {
+  function startPlayback() {
     // Initialize audio context first
     initAudioContext();
     
@@ -999,7 +1075,7 @@
     }
   }
 
-    function stopPlayback() {
+  function stopPlayback() {
     isPlaying = false;
     currentPlayPosition = 0;
     isFirstPlay = true; // Reset this flag when stopping
