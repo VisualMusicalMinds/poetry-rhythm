@@ -913,8 +913,11 @@
 
   // --- PLAYBACK LOGIC ---
 
-    function startPlayback() {
+      function startPlayback() {
+    // Initialize audio context first
     initAudioContext();
+    
+    // Set playing state
     isPlaying = true;
     currentPlayPosition = 0;
     playButton.textContent = '⏸';
@@ -922,7 +925,7 @@
 
     const beatInterval = 60000 / BPM;
 
-    const startPoetry = (delay = 0, isLooping = false) => {
+    const startPoetry = (delay = 0) => {
       const config = getLayoutConfig();
       const rhythmPattern = getRhythmPattern();
       
@@ -967,28 +970,36 @@
       // Schedule the next loop to start after the total duration
       const loopTimeout = setTimeout(() => {
         if (isPlaying) {
-          isFirstPlay = false; // It's no longer the first play when looping
-          startPoetry(0, true); // Loop without count-in
+          isFirstPlay = false; // Mark as no longer first play for subsequent loops
+          startPoetry(0); // Start the next loop with no delay
         }
       }, delay + totalDuration);
       playTimeouts.push(loopTimeout);
     };
 
-    // Changed this condition to check isFirstPlay instead of !isPlaying
-    if (beatEnabled && isFirstPlay) {
+    // Play the count-in if it's the first play and beat is enabled
+    if (isFirstPlay && beatEnabled) {
       let countInBeats = hasPickupMeasure ? 3 : 4;
+      console.log("Playing count-in with " + countInBeats + " beats");
+      
+      // Schedule count-in beats
       for (let i = 0; i < countInBeats; i++) {
         const timeDelay = i * beatInterval;
-        const countInTimeout = setTimeout(() => { if (isPlaying) playBrushDrum(); }, timeDelay);
+        const countInTimeout = setTimeout(() => { 
+          if (isPlaying) playBrushDrum(); 
+        }, timeDelay);
         playTimeouts.push(countInTimeout);
       }
+      
+      // Start the actual poetry after the count-in
       startPoetry(countInBeats * beatInterval);
     } else {
+      // If it's not the first play or beat is disabled, start immediately
       startPoetry(0);
     }
   }
 
-   function stopPlayback() {
+    function stopPlayback() {
     isPlaying = false;
     currentPlayPosition = 0;
     isFirstPlay = true; // Reset this flag when stopping
