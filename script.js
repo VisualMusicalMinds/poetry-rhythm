@@ -128,6 +128,7 @@
   let timeSignatureDenominator = 4;
   let sixteenthNoteModeActive = false;
   let hasPickupMeasure = false;
+  let isFirstPlay = true; // Add this new line
   let isPlaying = false;
   let playTimeouts = [];
   let currentPlayPosition = 0;
@@ -912,7 +913,7 @@
 
   // --- PLAYBACK LOGIC ---
 
-  function startPlayback() {
+    function startPlayback() {
     initAudioContext();
     isPlaying = true;
     currentPlayPosition = 0;
@@ -922,72 +923,75 @@
     const beatInterval = 60000 / BPM;
 
     const startPoetry = (delay = 0, isLooping = false) => {
-        const config = getLayoutConfig();
-        const rhythmPattern = getRhythmPattern();
-        
-        let noteInterval = beatInterval / config.circlesPerBeat;
-        
-        // Calculate the total number of circles needed to fill complete measures
-        let totalCircles;
-        if (hasPickupMeasure) {
-            const bodyCircles = rhythmPattern.length > config.circlesPerBeat ? rhythmPattern.length - config.circlesPerBeat : 0;
-            const circlesInLastMeasure = bodyCircles % config.circlesPerMeasure;
-            const paddedBodyCircles = circlesInLastMeasure === 0 ? bodyCircles : bodyCircles + (config.circlesPerMeasure - circlesInLastMeasure);
-            totalCircles = config.circlesPerBeat + paddedBodyCircles;
-        } else {
-            const circlesInLastMeasure = rhythmPattern.length % config.circlesPerMeasure;
-            totalCircles = circlesInLastMeasure === 0 ? rhythmPattern.length : rhythmPattern.length + (config.circlesPerMeasure - circlesInLastMeasure);
+      const config = getLayoutConfig();
+      const rhythmPattern = getRhythmPattern();
+      
+      let noteInterval = beatInterval / config.circlesPerBeat;
+      
+      // Calculate the total number of circles needed to fill complete measures
+      let totalCircles;
+      if (hasPickupMeasure) {
+        const bodyCircles = rhythmPattern.length > config.circlesPerBeat ? rhythmPattern.length - config.circlesPerBeat : 0;
+        const circlesInLastMeasure = bodyCircles % config.circlesPerMeasure;
+        const paddedBodyCircles = circlesInLastMeasure === 0 ? bodyCircles : bodyCircles + (config.circlesPerMeasure - circlesInLastMeasure);
+        totalCircles = config.circlesPerBeat + paddedBodyCircles;
+      } else {
+        const circlesInLastMeasure = rhythmPattern.length % config.circlesPerMeasure;
+        totalCircles = circlesInLastMeasure === 0 ? rhythmPattern.length : rhythmPattern.length + (config.circlesPerMeasure - circlesInLastMeasure);
+      }
+
+      const totalDuration = totalCircles * noteInterval;
+      const totalBeats = Math.ceil(totalCircles / config.circlesPerBeat);
+
+      // Schedule BEAT track
+      for (let beat = 0; beat < totalBeats; beat++) {
+        const timeDelay = delay + (beat * beatInterval);
+        const beatTimeout = setTimeout(() => {
+          if (isPlaying) {
+            highlightNotesBox(beat);
+            if (beatEnabled) playBrushDrum();
+          }
+        }, timeDelay);
+        playTimeouts.push(beatTimeout);
+      }
+
+      // Schedule RHYTHM track
+      rhythmPattern.forEach((hasSound, index) => {
+        const timeDelay = delay + (index * noteInterval);
+        const rhythmTimeout = setTimeout(() => {
+          if (isPlaying && hasSound) playTriangleTone(noteInterval * 0.8 / 1000);
+        }, timeDelay);
+        playTimeouts.push(rhythmTimeout);
+      });
+
+      // Schedule the next loop to start after the total duration
+      const loopTimeout = setTimeout(() => {
+        if (isPlaying) {
+          isFirstPlay = false; // It's no longer the first play when looping
+          startPoetry(0, true); // Loop without count-in
         }
-
-        const totalDuration = totalCircles * noteInterval;
-        const totalBeats = Math.ceil(totalCircles / config.circlesPerBeat);
-
-        // Schedule BEAT track
-        for (let beat = 0; beat < totalBeats; beat++) {
-          const timeDelay = delay + (beat * beatInterval);
-          const beatTimeout = setTimeout(() => {
-            if (isPlaying) {
-              highlightNotesBox(beat);
-              if (beatEnabled) playBrushDrum();
-            }
-          }, timeDelay);
-          playTimeouts.push(beatTimeout);
-        }
-
-        // Schedule RHYTHM track
-        rhythmPattern.forEach((hasSound, index) => {
-          const timeDelay = delay + (index * noteInterval);
-          const rhythmTimeout = setTimeout(() => {
-            if (isPlaying && hasSound) playTriangleTone(noteInterval * 0.8 / 1000);
-          }, timeDelay);
-          playTimeouts.push(rhythmTimeout);
-        });
-
-        // Schedule the next loop to start after the total duration
-        const loopTimeout = setTimeout(() => {
-            if (isPlaying) {
-                startPoetry(0, true); // Loop without count-in
-            }
-        }, delay + totalDuration);
-        playTimeouts.push(loopTimeout);
+      }, delay + totalDuration);
+      playTimeouts.push(loopTimeout);
     };
 
-    if (beatEnabled && !isPlaying) { // The 'isLooping' check was here, it should be !isPlaying
-        let countInBeats = hasPickupMeasure ? 3 : 4;
-        for (let i = 0; i < countInBeats; i++) {
-          const timeDelay = i * beatInterval;
-          const countInTimeout = setTimeout(() => { if (isPlaying) playBrushDrum(); }, timeDelay);
-          playTimeouts.push(countInTimeout);
-        }
-        startPoetry(countInBeats * beatInterval);
+    // Changed this condition to check isFirstPlay instead of !isPlaying
+    if (beatEnabled && isFirstPlay) {
+      let countInBeats = hasPickupMeasure ? 3 : 4;
+      for (let i = 0; i < countInBeats; i++) {
+        const timeDelay = i * beatInterval;
+        const countInTimeout = setTimeout(() => { if (isPlaying) playBrushDrum(); }, timeDelay);
+        playTimeouts.push(countInTimeout);
+      }
+      startPoetry(countInBeats * beatInterval);
     } else {
-        startPoetry(0);
+      startPoetry(0);
     }
   }
 
-  function stopPlayback() {
+   function stopPlayback() {
     isPlaying = false;
     currentPlayPosition = 0;
+    isFirstPlay = true; // Reset this flag when stopping
     playButton.textContent = '▶';
     playButton.classList.remove('playing');
     clearHighlights();
