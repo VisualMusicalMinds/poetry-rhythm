@@ -943,7 +943,12 @@
               highlightNotesBox(beat);
               if (beatEnabled) playBrushDrum();
               if (beat >= totalBeats - 1) {
-                setTimeout(() => { if (isPlaying) stopPlayback(); }, beatInterval);
+                           const loopTimeout = setTimeout(() => {
+                  if (isPlaying) {
+                    startPoetry(0, true); // Loop without count-in
+                  }
+                }, beatInterval);
+                playTimeouts.push(loopTimeout);
               }
             }
           }, timeDelay);
