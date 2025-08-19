@@ -9,13 +9,13 @@
         bpm: 120,
         pickup: true,
         words: [
-            'Hel-', '-', 'lo', '-', '-', 'and', 'wel-', 'come!', '-', '-', "Let's", '-', 'write', 'a', 'verse.', '-', 'We', 'can', 'start', '-', 'with', 'the', 'but-', 'tons', '-', 'to', 'help', 'you', 're-', '-', 'hearse.', '-', 'On', 'the', 'left,', 'the', 'but-', 'ton', 'Play,', '-', '-', "you'll", 'want', 'to', 'press', '-', 'that.', '-', 'B', 'P', 'M', 'to', 'set', 'the', 'beat,', '-', 'Green', 'and', 'Blue', 'just', 'mix', 'and', 'match.', '-', 'Pre-', 'load',
+            'Hel-', '-', 'lo', '-', '-', 'and', 'wel-', 'come!', '-', '-', "Let's", '-', 'write', 'a', 'verse.', '-', 'We', 'can', 'start', '-', 'with', 'the', 'but-', 'tons', '-', 'to', 'help', 'you'[...]
             'Rhymes', 'make', '-', 'a', // Syncopation 1 (starts at index 67)
             'rhy-', 'thm,', '-', '-', 'pick', 'the', 'one', 'you', 'want.', '-', 'Switch', 'to',
             '9/', '8,', '-', 'or', // Syncopation 2 (starts at index 82)
-            '6/', '4,', '-', 'use', 'six-', 'teenth', 'notes', 'too', 'much.', '-', '-', 'But', 'when', 'you', 'want', 'to', 'save,', '-', 'make', 'an', 'ed-', 'it,', 'add', "what's", 'new...', '-', 'Press', 'the',
+            '6/', '4,', '-', 'use', 'six-', 'teenth', 'notes', 'too', 'much.', '-', '-', 'But', 'when', 'you', 'want', 'to', 'save,', '-', 'make', 'an', 'ed-', 'it,', 'add', "what's", 'new...', '-', '[...]
             'Pa-', 'ra-', '-', 'graph', // Syncopation 3 (starts at index 113)
-            'but-', 'ton', '-', 'and', 'see', 'what', 'it', 'can', 'do!', '-', 'Grab', 'the', 'text', '-', 'from', 'the', 'box,', '-', 'store', 'it', 'safe', 'and', 'use', 'it', 'la-', 'ter,', 'make', 'a', 'screen', 'shot', 'on', 'your', 'clip-', 'board,', 'keep', 'the', 'pic-', 'ture', 'for', 'the', 'ha-', 'ters.', 'Then', '-', 'turn', 'the', 'e-', 'dit', 'off,', '-', 'see', 'the', 'Rhyme', 'in', 'all', 'its', 'glo-', 'ry', 'as', 'you', 'plot', 'the', 'se-', 'cond', 'verse', '-', 'and', 'con-', 'ti-', 'nue', 'with', 'your', 'sto-', 'ry.'
+            'but-', 'ton', '-', 'and', 'see', 'what', 'it', 'can', 'do!', '-', 'Grab', 'the', 'text', '-', 'from', 'the', 'box,', '-', 'store', 'it', 'safe', 'and', 'use', 'it', 'la-', 'ter,', 'make',[...]
         ],
         syncopation: [67, 83, 115], // Trigger positions (index of 2nd sound)
         syncopationStates: {
@@ -919,22 +919,29 @@
     playButton.textContent = '⏸';
     playButton.classList.add('playing');
 
-    const rhythmPattern = getRhythmPattern();
     const beatInterval = 60000 / BPM;
 
-    const startPoetry = (delay = 0) => {
-        let noteInterval, notesPerBeat;
+    const startPoetry = (delay = 0, isLooping = false) => {
+        const config = getLayoutConfig();
+        const rhythmPattern = getRhythmPattern();
         
-        if (timeSignatureDenominator === 8) {
-            noteInterval = beatInterval / 3;
-            notesPerBeat = 3;
+        let noteInterval = beatInterval / config.circlesPerBeat;
+        
+        // Calculate the total number of circles needed to fill complete measures
+        let totalCircles;
+        if (hasPickupMeasure) {
+            const bodyCircles = rhythmPattern.length > config.circlesPerBeat ? rhythmPattern.length - config.circlesPerBeat : 0;
+            const circlesInLastMeasure = bodyCircles % config.circlesPerMeasure;
+            const paddedBodyCircles = circlesInLastMeasure === 0 ? bodyCircles : bodyCircles + (config.circlesPerMeasure - circlesInLastMeasure);
+            totalCircles = config.circlesPerBeat + paddedBodyCircles;
         } else {
-            noteInterval = sixteenthNoteModeActive ? beatInterval / 4 : beatInterval / 2;
-            notesPerBeat = sixteenthNoteModeActive ? 4 : 2;
+            const circlesInLastMeasure = rhythmPattern.length % config.circlesPerMeasure;
+            totalCircles = circlesInLastMeasure === 0 ? rhythmPattern.length : rhythmPattern.length + (config.circlesPerMeasure - circlesInLastMeasure);
         }
-        
-        const totalBeats = Math.ceil(rhythmPattern.length / notesPerBeat);
-        
+
+        const totalDuration = totalCircles * noteInterval;
+        const totalBeats = Math.ceil(totalCircles / config.circlesPerBeat);
+
         // Schedule BEAT track
         for (let beat = 0; beat < totalBeats; beat++) {
           const timeDelay = delay + (beat * beatInterval);
@@ -942,14 +949,6 @@
             if (isPlaying) {
               highlightNotesBox(beat);
               if (beatEnabled) playBrushDrum();
-              if (beat >= totalBeats - 1) {
-                           const loopTimeout = setTimeout(() => {
-                  if (isPlaying) {
-                    startPoetry(0, true); // Loop without count-in
-                  }
-                }, beatInterval);
-                playTimeouts.push(loopTimeout);
-              }
             }
           }, timeDelay);
           playTimeouts.push(beatTimeout);
@@ -963,9 +962,17 @@
           }, timeDelay);
           playTimeouts.push(rhythmTimeout);
         });
+
+        // Schedule the next loop to start after the total duration
+        const loopTimeout = setTimeout(() => {
+            if (isPlaying) {
+                startPoetry(0, true); // Loop without count-in
+            }
+        }, delay + totalDuration);
+        playTimeouts.push(loopTimeout);
     };
 
-    if (beatEnabled) {
+    if (beatEnabled && !isPlaying) { // The 'isLooping' check was here, it should be !isPlaying
         let countInBeats = hasPickupMeasure ? 3 : 4;
         for (let i = 0; i < countInBeats; i++) {
           const timeDelay = i * beatInterval;
