@@ -493,6 +493,39 @@ body { margin: 0; padding: 0; }
     background-color: transparent;
 }
 
+/* Mode Toggle Switch */
+.control-button-group {
+  display: flex;
+  border: 1px solid #007bff;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.mode-button {
+  background-color: white;
+  border: none;
+  padding: 0 12px;
+  height: 40px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  color: #007bff;
+  font-weight: bold;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mode-button.active {
+  background-color: #007bff;
+  color: white;
+}
+
+.mode-button:not(.active):hover {
+  background-color: #e6f3ff;
+}
+
 /* Responsive adjustments for smaller screens */
 @media (max-width: 720px) {
   .floating-panel {
