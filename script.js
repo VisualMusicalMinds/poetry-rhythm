@@ -139,6 +139,7 @@
   let BPM = 82;
   let textImportMode = 'replace'; // 'add' or 'replace'
   let savedTextInput = ''; // Store the text from the modal
+  let chantModeActive = false;
 
   // Audio context for generating sounds
   let audioContext = null;
@@ -600,6 +601,28 @@
     }
   });
 
+
+  // Mode Toggle
+  const poetryModeBtn = document.getElementById('poetry-mode-btn');
+  const chantModeBtn = document.getElementById('chant-mode-btn');
+
+  poetryModeBtn.addEventListener('click', () => {
+    if (chantModeActive) {
+      chantModeActive = false;
+      poetryModeBtn.classList.add('active');
+      chantModeBtn.classList.remove('active');
+      render();
+    }
+  });
+
+  chantModeBtn.addEventListener('click', () => {
+    if (!chantModeActive) {
+      chantModeActive = true;
+      chantModeBtn.classList.add('active');
+      poetryModeBtn.classList.remove('active');
+      render();
+    }
+  });
 
   // Circle icon button
   const circleIcon = document.getElementById('circle-icon');
@@ -1130,6 +1153,34 @@
       }
   }
 
+  function getChantText(activeStates) {
+    const pattern = activeStates.map(a => a ? 'B' : 'G').join('/');
+    switch (pattern) {
+      // Two-circle
+      case 'B/G': return 'Ta';
+      case 'B/B': return 'Ti-ti';
+      case 'G/B': return 'Ti';
+      // Three-circle
+      case 'B/G/G': return 'Ta';
+      case 'B/B/G': return 'Ti-ti';
+      case 'B/B/B': return 'Ti-ti-ti';
+      case 'G/B/G': return 'Ta';
+      case 'G/B/B': return 'Ti-ti';
+      case 'G/G/B': return 'Ti';
+      // Four-circle
+      case 'B/G/G/G': return 'Ta';
+      case 'B/G/B/G': return 'Ti-ti';
+      case 'B/B/B/B': return 'Tiki-tiki';
+      case 'B/B/B/G': return 'Tiki-ti';
+      case 'B/G/B/B': return 'Ti-tiki';
+      case 'G/B/B/B': return 'Ki-tiki';
+      case 'G/B/G/G': return 'Ki';
+      case 'G/G/B/G': return 'Ti';
+      case 'G/G/G/B': return 'Ki';
+      default: return '';
+    }
+  }
+
   function createBeatGroup(beatStartPosition, config, displayWords) {
     const group = document.createElement('div');
     group.className = 'group';
@@ -1151,13 +1202,17 @@
         circlesDiv.classList.add('pickup');
     }
 
+    const activeStates = [];
     for (let circleIndex = 0; circleIndex < config.circlesPerBeat; circleIndex++) {
         const idx = beatStartPosition + circleIndex;
         const circle = document.createElement('span');
         circle.className = 'circle';
+        const isActive = isPositionActive(idx, displayWords);
+        activeStates.push(isActive);
+
         if (syncopation.includes(idx)) {
             circle.classList.add('syncopated');
-        } else if (isPositionActive(idx, displayWords)) {
+        } else if (isActive) {
             circle.classList.add('active');
         }
         circle.addEventListener('click', () => {
@@ -1272,71 +1327,82 @@
     }
     group.appendChild(notesBox);
 
-    const wordsDiv = document.createElement('div');
-    wordsDiv.className = 'words';
-    for (let circleIndex = 0; circleIndex < config.circlesPerBeat; circleIndex++) {
-        const idx = beatStartPosition + circleIndex;
-        const wc = document.createElement('span');
-        wc.className = 'word-container';
-        if (idx === editingIndex) {
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.value = displayWords[idx];
-            input.className = 'word-input';
-            wc.appendChild(input);
-            wordsDiv.appendChild(wc);
-            setTimeout(() => { input.focus(); input.select(); });
-            function cleanup() { input.removeEventListener('keydown', onKey); input.removeEventListener('blur', onBlur); }
-            function onKey(e) {
-                if (e.key === 'Enter') { e.preventDefault(); words[idx] = input.value; editingIndex = null; cleanup(); render(); }
-                else if (e.key === 'Escape') { e.preventDefault(); editingIndex = null; cleanup(); render(); }
-                else if (e.key === ' ' || e.code === 'Space') { 
-                    e.preventDefault(); 
-                    words[idx] = input.value === '' ? '-' : input.value;
-                    editingIndex = idx + 1; 
-                    if (editingIndex >= words.length) {
+    if (chantModeActive) {
+        const chantText = getChantText(activeStates);
+        const chantDiv = document.createElement('div');
+        chantDiv.className = 'words'; // Use 'words' class for consistent styling
+        const chantSpan = document.createElement('span');
+        chantSpan.className = 'word';
+        chantSpan.textContent = chantText;
+        chantDiv.appendChild(chantSpan);
+        group.appendChild(chantDiv);
+    } else {
+        const wordsDiv = document.createElement('div');
+        wordsDiv.className = 'words';
+        for (let circleIndex = 0; circleIndex < config.circlesPerBeat; circleIndex++) {
+            const idx = beatStartPosition + circleIndex;
+            const wc = document.createElement('span');
+            wc.className = 'word-container';
+            if (idx === editingIndex) {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = displayWords[idx];
+                input.className = 'word-input';
+                wc.appendChild(input);
+                wordsDiv.appendChild(wc);
+                setTimeout(() => { input.focus(); input.select(); });
+                function cleanup() { input.removeEventListener('keydown', onKey); input.removeEventListener('blur', onBlur); }
+                function onKey(e) {
+                    if (e.key === 'Enter') { e.preventDefault(); words[idx] = input.value; editingIndex = null; cleanup(); render(); }
+                    else if (e.key === 'Escape') { e.preventDefault(); editingIndex = null; cleanup(); render(); }
+                    else if (e.key === ' ' || e.code === 'Space') { 
+                        e.preventDefault(); 
+                        words[idx] = input.value === '' ? '-' : input.value;
+                        editingIndex = idx + 1; 
+                        if (editingIndex >= words.length) {
+                            words.push('-');
+                        }
+                        cleanup(); 
+                        render();
+                    }
+                    else if ((e.key === 'Backspace' || e.key === 'Delete') && input.value === '') { 
+                      e.preventDefault(); 
+                      words.splice(idx, 1); 
+                      editingIndex = Math.max(idx - 1, 0); 
+                      if (words.length === 0) {
+                        words.push('-');
+                      }
+                      cleanup(); 
+                      render(); 
+                    }
+                }
+                function onBlur() { words[idx] = input.value; editingIndex = null; cleanup(); render(); }
+                input.addEventListener('keydown', onKey);
+                input.addEventListener('blur', onBlur);
+            } else {
+                const span = document.createElement('span');
+                const word = displayWords[idx];
+                if (isAffectedBySyncopation(idx) && !isPositionActive(idx, displayWords)) {
+                    span.textContent = '';
+                    span.className = 'word rest';
+                } else {
+                    span.textContent = word;
+                    span.className = 'word';
+                    if (word === '-') span.classList.add('rest');
+                }
+                span.addEventListener('click', () => {
+                    while (words.length <= idx) {
                         words.push('-');
                     }
-                    cleanup(); 
+                    editingIndex = idx;
                     render();
-                }
-                else if ((e.key === 'Backspace' || e.key === 'Delete') && input.value === '') { 
-                  e.preventDefault(); 
-                  words.splice(idx, 1); 
-                  editingIndex = Math.max(idx - 1, 0); 
-                  if (words.length === 0) {
-                    words.push('-');
-                  }
-                  cleanup(); 
-                  render(); 
-                }
+                });
+                wc.appendChild(span);
+                wordsDiv.appendChild(wc);
             }
-            function onBlur() { words[idx] = input.value; editingIndex = null; cleanup(); render(); }
-            input.addEventListener('keydown', onKey);
-            input.addEventListener('blur', onBlur);
-        } else {
-            const span = document.createElement('span');
-            const word = displayWords[idx];
-            if (isAffectedBySyncopation(idx) && !isPositionActive(idx, displayWords)) {
-                span.textContent = '';
-                span.className = 'word rest';
-            } else {
-                span.textContent = word;
-                span.className = 'word';
-                if (word === '-') span.classList.add('rest');
-            }
-            span.addEventListener('click', () => {
-                while (words.length <= idx) {
-                    words.push('-');
-                }
-                editingIndex = idx;
-                render();
-            });
-            wc.appendChild(span);
-            wordsDiv.appendChild(wc);
         }
+        group.appendChild(wordsDiv);
     }
-    group.appendChild(wordsDiv);
     return group;
   }
 
