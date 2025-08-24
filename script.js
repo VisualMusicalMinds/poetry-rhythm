@@ -1157,27 +1157,37 @@
     const pattern = activeStates.map(a => a ? 'B' : 'G').join('/');
     switch (pattern) {
       // Two-circle
-      case 'B/G': return 'Ta';
-      case 'B/B': return 'Ti-ti';
-      case 'G/B': return 'Ti';
+      case 'B/G': return ['Ta', '-'];
+      case 'B/B': return ['Ti', 'ti'];
+      case 'G/B': return ['-', 'ti'];
+      case 'G/G': return ['-', '-'];
       // Three-circle
-      case 'B/G/G': return 'Ta';
-      case 'B/B/G': return 'Ti-ti';
-      case 'B/B/B': return 'Ti-ti-ti';
-      case 'G/B/G': return 'Ta';
-      case 'G/B/B': return 'Ti-ti';
-      case 'G/G/B': return 'Ti';
+      case 'B/G/G': return ['Ta', '-', '-'];
+      case 'B/B/G': return ['Ti', 'Ta', '-'];
+      case 'B/B/B': return ['Ti', 'ti', 'ti'];
+      case 'G/B/G': return ['-', 'Ta', '-'];
+      case 'G/B/B': return ['-', 'ti', 'ti'];
+      case 'G/G/B': return ['-', '-', 'ti'];
+      case 'B/G/B': return ['Ta', '-', 'ti'];
+      case 'G/G/G': return ['-', '-', '-'];
       // Four-circle
-      case 'B/G/G/G': return 'Ta';
-      case 'B/G/B/G': return 'Ti-ti';
-      case 'B/B/B/B': return 'Tiki-tiki';
-      case 'B/B/B/G': return 'Tiki-ti';
-      case 'B/G/B/B': return 'Ti-tiki';
-      case 'G/B/B/B': return 'Ki-tiki';
-      case 'G/B/G/G': return 'Ki';
-      case 'G/G/B/G': return 'Ti';
-      case 'G/G/G/B': return 'Ki';
-      default: return '';
+      case 'B/G/G/G': return ['Ta', '-', '-', '-'];
+      case 'B/G/B/G': return ['Ti', '-', 'ti', '-'];
+      case 'B/B/B/B': return ['Ti', 'ki', 'ti', 'ki'];
+      case 'B/B/B/G': return ['Ti', 'ki', 'ti', '-'];
+      case 'B/G/B/B': return ['Ti', '-', 'ti', 'ki'];
+      case 'G/B/B/B': return ['-', 'ki', 'ti', 'ki'];
+      case 'G/B/G/G': return ['-', 'ki', '-', '-'];
+      case 'G/G/B/G': return ['-', '-', 'ti', '-'];
+      case 'G/G/G/B': return ['-', '-', '-', 'ki'];
+      case 'B/B/G/G': return ['Ti', 'ki', '-', '-'];
+      case 'G/B/G/B': return ['-', 'ki', '-', 'ki'];
+      case 'G/B/B/G': return ['-', 'ki', 'ti', '-'];
+      case 'B/B/G/B': return ['Ti', 'ki', '-', 'ti'];
+      case 'G/G/B/B': return ['-', '-', 'ti', 'ki'];
+      case 'G/G/G/G': return ['-', '-', '-', '-'];
+      case 'B/G/G/B': return ['Ti', '-', '-', 'ki'];
+      default: return [];
     }
   }
 
@@ -1328,13 +1338,21 @@
     group.appendChild(notesBox);
 
     if (chantModeActive) {
-        const chantText = getChantText(activeStates);
+        const chantSyllables = getChantText(activeStates);
         const chantDiv = document.createElement('div');
-        chantDiv.className = 'words'; // Use 'words' class for consistent styling
-        const chantSpan = document.createElement('span');
-        chantSpan.className = 'word';
-        chantSpan.textContent = chantText;
-        chantDiv.appendChild(chantSpan);
+        chantDiv.className = 'words';
+        chantSyllables.forEach(syllable => {
+            const wc = document.createElement('span');
+            wc.className = 'word-container';
+            const span = document.createElement('span');
+            span.className = 'word';
+            if (syllable === '-') {
+                span.classList.add('rest');
+            }
+            span.textContent = syllable;
+            wc.appendChild(span);
+            chantDiv.appendChild(wc);
+        });
         group.appendChild(chantDiv);
     } else {
         const wordsDiv = document.createElement('div');
