@@ -133,6 +133,7 @@
   let isPlaying = false;
   let playTimeouts = [];
   let currentPlayPosition = 0;
+  let selectedPlayStartPosition = null; // To store the selected starting beat
   let notesBoxElements = []; // Store references to notes boxes for highlighting
   let beatEnabled = true; // Beat checkbox state
   let rhythmEnabled = true; // Rhythm checkbox state
@@ -569,6 +570,7 @@
         syncopation = [];
         syncopationStates = {};
         hasPickupMeasure = false;
+        selectedPlayStartPosition = null; // Reset selection
 
         // Check if the song data is in the new object format or the old array format
         if (Array.isArray(songData)) {
@@ -1018,13 +1020,13 @@
     
     // Set playing state
     isPlaying = true;
-    currentPlayPosition = 0;
+    currentPlayPosition = selectedPlayStartPosition || 0;
     playButton.textContent = '⏸';
     playButton.classList.add('playing');
 
     const beatInterval = 60000 / BPM;
 
-    const startPoetry = (delay = 0) => {
+    const startPoetry = (delay = 0, startBeat = 0) => {
       const config = getLayoutConfig();
       const rhythmPattern = getRhythmPattern();
       
@@ -1042,12 +1044,12 @@
         totalCircles = circlesInLastMeasure === 0 ? rhythmPattern.length : rhythmPattern.length + (config.circlesPerMeasure - circlesInLastMeasure);
       }
 
-      const totalDuration = totalCircles * noteInterval;
+      const totalDuration = (totalCircles * noteInterval) - (startBeat * beatInterval);
       const totalBeats = Math.ceil(totalCircles / config.circlesPerBeat);
 
       // Schedule BEAT track
-      for (let beat = 0; beat < totalBeats; beat++) {
-        const timeDelay = delay + (beat * beatInterval);
+      for (let beat = startBeat; beat < totalBeats; beat++) {
+        const timeDelay = delay + ((beat - startBeat) * beatInterval);
         const beatTimeout = setTimeout(() => {
           if (isPlaying) {
             highlightNotesBox(beat);
@@ -1058,7 +1060,8 @@
       }
 
       // Schedule RHYTHM track
-      rhythmPattern.forEach((hasSound, index) => {
+      const startCircle = startBeat * config.circlesPerBeat;
+      rhythmPattern.slice(startCircle).forEach((hasSound, index) => {
         const timeDelay = delay + (index * noteInterval);
         const rhythmTimeout = setTimeout(() => {
           if (isPlaying && hasSound) playTriangleTone(noteInterval * 0.8 / 1000);
@@ -1070,15 +1073,20 @@
       const loopTimeout = setTimeout(() => {
         if (isPlaying) {
           isFirstPlay = false; // Mark as no longer first play for subsequent loops
-          startPoetry(0); // Start the next loop with no delay
+          startPoetry(0, 0); // Start the next loop from the beginning
         }
       }, delay + totalDuration);
       playTimeouts.push(loopTimeout);
     };
 
     // Play the count-in if it's the first play and beat is enabled
-    if (isFirstPlay && beatEnabled) {
-      let countInBeats = hasPickupMeasure ? 3 : 4;
+    const shouldPlayCountIn = (isFirstPlay || selectedPlayStartPosition !== null) && beatEnabled;
+
+    if (shouldPlayCountIn) {
+      let countInBeats = 4;
+      if (isFirstPlay && hasPickupMeasure && selectedPlayStartPosition === null) {
+        countInBeats = 3;
+      }
       console.log("Playing count-in with " + countInBeats + " beats");
       
       // Schedule count-in beats
@@ -1091,10 +1099,10 @@
       }
       
       // Start the actual poetry after the count-in
-      startPoetry(countInBeats * beatInterval);
+      startPoetry(countInBeats * beatInterval, currentPlayPosition);
     } else {
       // If it's not the first play or beat is disabled, start immediately
-      startPoetry(0);
+      startPoetry(0, currentPlayPosition);
     }
   }
 
@@ -1107,6 +1115,8 @@
     clearHighlights();
     playTimeouts.forEach(timeout => clearTimeout(timeout));
     playTimeouts = [];
+    selectedPlayStartPosition = null; // Clear selection on stop
+    render(); // Re-render to remove selection highlight
   }
 
   function updateCircleVisibility() {
@@ -1285,6 +1295,19 @@
     } else {
         notesBoxElements.push(notesBox);
     }
+    
+    if (beatIndex === selectedPlayStartPosition) {
+        notesBox.classList.add('selected');
+    }
+
+    notesBox.addEventListener('click', () => {
+        if (selectedPlayStartPosition === beatIndex) {
+            selectedPlayStartPosition = null; // Toggle off if already selected
+        } else {
+            selectedPlayStartPosition = beatIndex;
+        }
+        render(); // Re-render to show selection change
+    });
 
     if (config.circlesPerBeat === 4) {
         notesBox.classList.add('sixteenth');
