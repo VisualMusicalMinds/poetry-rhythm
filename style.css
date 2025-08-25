@@ -6,7 +6,7 @@ body { margin: 0; padding: 0; }
 .final-measure-divider { display: inline-block; width: 6px; height: 80px; background: linear-gradient(to right, #666 0%, #666 25%, transparent 25%, transparent 75%, #666 75%, #666 100%); margin: 0 8px; vertical-align: top; position: relative; top: 24px; }
 .group { display: inline-block; vertical-align: top; margin-right: 8px; text-align: center; }
 .notes-box { display: flex; justify-content: center; align-items: center; margin-bottom: 4px; border: none; padding: 4px; transition: background-color 0.1s ease; }
-.notes-box.playing { background-color: #ffff99; border-radius: 4px; }
+.notes-box.playing, .notes-box.selected { background-color: #ffff99; border-radius: 4px; }
 .notes-box svg, .notes-box img { width: 48px; height: 40px; margin: 0 4px; }
 .notes-box.compound svg, .notes-box.compound img {
   width: 72px; 
