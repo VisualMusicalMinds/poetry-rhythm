@@ -1567,5 +1567,41 @@
   // Set initial state of toggle buttons
   toggleReplaceBtn.classList.add('active');
   toggleAddBtn.classList.remove('active');
+
+  // Zoom Controls
+  const zoomFab = document.getElementById('zoom-fab');
+  const zoomInBtn = document.getElementById('zoom-in-btn');
+  const zoomOutBtn = document.getElementById('zoom-out-btn');
+  const poemContainer = document.getElementById('poem');
+
+  const zoomLevels = [0.75, 1.0, 1.1, 1.25, 1.5, 1.75];
+  let currentZoomIndex = 1; // Default is 1.0
+
+  function applyZoom() {
+    poemContainer.className = 'zoom-level-' + currentZoomIndex;
+    zoomInBtn.disabled = currentZoomIndex === zoomLevels.length - 1;
+    zoomOutBtn.disabled = currentZoomIndex === 0;
+  }
+
+  zoomFab.addEventListener('click', () => {
+    zoomInBtn.classList.toggle('visible');
+    zoomOutBtn.classList.toggle('visible');
+  });
+
+  zoomInBtn.addEventListener('click', () => {
+    if (currentZoomIndex < zoomLevels.length - 1) {
+      currentZoomIndex++;
+      applyZoom();
+    }
+  });
+
+  zoomOutBtn.addEventListener('click', () => {
+    if (currentZoomIndex > 0) {
+      currentZoomIndex--;
+      applyZoom();
+    }
+  });
+  
+  applyZoom();
   render();
 })();
