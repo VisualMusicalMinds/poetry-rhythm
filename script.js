@@ -753,8 +753,8 @@
   const copyVisualBtn = document.getElementById('copy-visual-btn');
   copyVisualBtn.addEventListener('click', captureVisual);
 
-  // Paragraph (text input modal) setup
-  const paragraphBtn = document.getElementById('paragraph-btn');
+  // Save (text input modal) setup
+  const saveBtn = document.getElementById('save-btn');
   const modal = document.getElementById('text-input-modal');
   const multiLineInput = document.getElementById('multi-line-input');
   const modalCancelBtn = document.getElementById('modal-cancel-btn');
@@ -797,7 +797,7 @@
       modal.style.display = 'none';
   }
 
-  paragraphBtn.addEventListener('click', openModal);
+  saveBtn.addEventListener('click', openModal);
   modalCancelBtn.addEventListener('click', closeModal);
   modal.addEventListener('click', (e) => {
       if (e.target === modal) {
