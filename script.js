@@ -799,10 +799,18 @@
 
   saveBtn.addEventListener('click', openModal);
   modalCancelBtn.addEventListener('click', closeModal);
-  modal.addEventListener('click', (e) => {
+  let modalMousedownOnBackdrop = false;
+  modal.addEventListener('mousedown', e => {
       if (e.target === modal) {
+          modalMousedownOnBackdrop = true;
+      }
+  });
+
+  modal.addEventListener('mouseup', e => {
+      if (e.target === modal && modalMousedownOnBackdrop) {
           closeModal();
       }
+      modalMousedownOnBackdrop = false;
   });
 
   toggleAddBtn.addEventListener('click', () => {
