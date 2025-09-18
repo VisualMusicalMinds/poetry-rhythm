@@ -124,6 +124,60 @@ body { margin: 0; padding: 0; }
     padding: 0 12px;
 }
 
+/* Save Button */
+.save-button {
+    padding: 0 12px;
+}
+
+.save-icon {
+    width: 20px;
+    height: 20px;
+    position: relative;
+}
+
+.floppy-top {
+    width: 100%;
+    height: 60%;
+    background-color: #007bff;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+    position: absolute;
+    top: 0;
+}
+
+.floppy-top::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    right: 2px;
+    bottom: 0;
+    background-color: white;
+    border-top-left-radius: 2px;
+    border-top-right-radius: 2px;
+}
+
+.floppy-top::after {
+    content: '';
+    position: absolute;
+    width: 40%;
+    height: 40%;
+    background-color: #007bff;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.floppy-bottom {
+    width: 100%;
+    height: 40%;
+    background-color: #007bff;
+    border-bottom-left-radius: 3px;
+    border-bottom-right-radius: 3px;
+    position: absolute;
+    bottom: 0;
+}
+
 /* Circle icon button */
 .icon-button { 
   display: flex; 
