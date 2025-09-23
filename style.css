@@ -114,8 +114,13 @@ body { margin: 0; padding: 0; }
 }
 
 /* Lyrics dropdown */
-.lyrics-dropdown {
+.lyrics-dropdown,
+.rhythm-systems-dropdown {
   /* Inherits styles from .control-button */
+}
+
+.hidden {
+  display: none !important;
 }
 
 /* Copy Visual Button */
