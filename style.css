@@ -294,25 +294,8 @@ body { margin: 0; padding: 0; }
     opacity: 0.7;
     transition: all 0.2s ease;
 }
-.sixteenth-note-button {
-    position: relative;
-}
-.sixteenth-note-button::after {
-    content: attr(data-subdiv);
-    position: absolute;
-    top: -5px;
-    right: -5px;
-    background: #6c757d;
-    color: white;
-    border-radius: 50%;
-    width: 18px;
-    height: 18px;
-    font-size: 12px;
-    line-height: 18px;
-    text-align: center;
-    font-weight: bold;
-    display: block;
-    box-shadow: 0 0 2px rgba(0,0,0,0.5);
+.sixteenth-note-button.active {
+    background-color: #28a745; /* Green for active */
 }
 
 .sixteenth-note-button.active img {
@@ -320,13 +303,6 @@ body { margin: 0; padding: 0; }
     opacity: 1;
 }
 
-.sixteenth-note-button.triplet {
-    background-color: #ffc107; /* Yellow for triplets */
-}
-
-.sixteenth-note-button.sixteenth {
-    background-color: #28a745; /* Green for 16ths */
-}
 .sixteenth-note-button.disabled {
     cursor: not-allowed;
     background-color: #f0f0f0;
