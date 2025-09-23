@@ -1446,6 +1446,8 @@
         chantDiv.className = 'words';
         if (config.circlesPerBeat === 4) {
             chantDiv.classList.add('sixteenth-chant');
+        } else if (config.circlesPerBeat === 3) {
+            chantDiv.classList.add('triplet-chant');
         }
         chantSyllables.forEach((syllable, i) => {
             const wc = document.createElement('span');
