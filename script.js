@@ -1444,9 +1444,15 @@
         const chantSyllables = getChantText(activeStates);
         const chantDiv = document.createElement('div');
         chantDiv.className = 'words';
-        chantSyllables.forEach(syllable => {
+        chantSyllables.forEach((syllable, i) => {
             const wc = document.createElement('span');
             wc.className = 'word-container';
+
+            // Add extra space for "Ti ti" when not in 16th note mode
+            if (!sixteenthNoteModeActive && i === 1 && chantSyllables.length === 2 && chantSyllables[0] === 'Ti' && syllable === 'ti') {
+                wc.style.marginLeft = '8px';
+            }
+
             const span = document.createElement('span');
             span.className = 'word';
             if (syllable === '-') {
