@@ -701,3 +701,10 @@ body { margin: 0; padding: 0; }
     position: relative;
     left: 0.3em;
 }
+
+.words.triplet-chant {
+    width: 5em;
+    justify-content: space-between;
+    position: relative;
+    left: 0.3em;
+}
