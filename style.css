@@ -703,6 +703,8 @@ body { margin: 0; padding: 0; }
 }
 
 .words.sixteenth-chant {
-    width: 5.9em;
+    width: 6em;
     justify-content: space-between;
+    position: relative;
+    left: 0.3em;
 }
