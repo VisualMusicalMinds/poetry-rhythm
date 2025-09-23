@@ -1444,6 +1444,9 @@
         const chantSyllables = getChantText(activeStates);
         const chantDiv = document.createElement('div');
         chantDiv.className = 'words';
+        if (config.circlesPerBeat === 4) {
+            chantDiv.classList.add('sixteenth-chant');
+        }
         chantSyllables.forEach((syllable, i) => {
             const wc = document.createElement('span');
             wc.className = 'word-container';
