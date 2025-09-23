@@ -697,3 +697,7 @@ body { margin: 0; padding: 0; }
 .word-container.extra-spacing {
   margin-left: 12px;
 }
+
+.word-container.chant-spacer {
+  width: 1.5em;
+}
