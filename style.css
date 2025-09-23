@@ -707,6 +707,10 @@ body { margin: 0; padding: 0; }
     left: 0.3em;
 }
 
+.words.single-syllable-whole {
+    justify-content: center;
+}
+
 .add-measure-btn {
     display: none;
     position: absolute;
