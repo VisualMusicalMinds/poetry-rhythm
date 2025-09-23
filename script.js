@@ -1548,6 +1548,59 @@
   function createDivider(isFinal = false) {
     const divider = document.createElement('div');
     divider.className = isFinal ? 'final-measure-divider' : 'measure-divider';
+
+    if (isFinal && words.length > 0) {
+      const deleteBtn = document.createElement('div');
+      deleteBtn.className = 'delete-measure-btn';
+      deleteBtn.textContent = 'X';
+      deleteBtn.title = 'Delete last measure';
+      deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent any other click events
+
+        // First, remove any trailing rests to get the true end of the music
+        while (words.length > 0 && (words[words.length - 1] === '-' || words[words.length - 1] === '')) {
+          words.pop();
+        }
+
+        if (words.length === 0) {
+          render();
+          return;
+        }
+
+        const config = getLayoutConfig();
+        let numToRemove;
+
+        if (hasPickupMeasure) {
+          const pickupSize = config.circlesPerBeat;
+          if (words.length <= pickupSize) {
+            // If only the pickup measure (or part of it) exists, delete it.
+            words.length = 0;
+          } else {
+            // Calculate what's in the main body of the song
+            const bodyLength = words.length - pickupSize;
+            // Find out how many circles are in the last measure of the body
+            numToRemove = bodyLength % config.circlesPerMeasure;
+            if (numToRemove === 0) {
+              // If the last measure is full, remove a full measure's worth
+              numToRemove = config.circlesPerMeasure;
+            }
+            words.length -= numToRemove;
+          }
+        } else {
+          // No pickup measure, simpler logic
+          numToRemove = words.length % config.circlesPerMeasure;
+          if (numToRemove === 0) {
+            // If the last measure is full, remove a full measure's worth
+            numToRemove = config.circlesPerMeasure;
+          }
+          words.length -= numToRemove;
+        }
+        
+        render();
+      });
+      divider.appendChild(deleteBtn);
+    }
+
     return divider;
   }
 
