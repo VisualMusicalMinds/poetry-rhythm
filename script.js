@@ -155,7 +155,7 @@
   let timeSignatureNumerator = 4;
   let timeSignatureDenominator = 4;
   let subdivisionMode = 2; // 2 | 3 | 4, default eighths
-  let canonical12 = []; // canonical timeline at 12 ticks per beat
+  let canonicals = { 2: [], 3: [], 4: [] }; // canonical timelines at 12 ticks per beat
   let hasPickupMeasure = false;
   let isFirstPlay = true;
   let isPlaying = false;
@@ -642,9 +642,27 @@ function mergeViewIntoCanonical(canon12, viewWords, subdivision) {
   return next;
 }
 
+function synchronizeLyrics() {
+    const sourceCanon = canonicals[subdivisionMode];
+    const activeTokens = extractActiveTokens(fromCanonical12(sourceCanon, subdivisionMode));
+
+    for (const s of [2, 3, 4]) {
+        if (s === subdivisionMode) continue;
+
+        const targetView = fromCanonical12(canonicals[s], s);
+        const targetActiveStates = targetView.map(w => w !== '-' && w !== '');
+        const newTargetView = rebuildWordsFromActiveStates(activeTokens, targetActiveStates);
+        canonicals[s] = mergeViewIntoCanonical(canonicals[s], newTargetView, s);
+    }
+}
+
 function commitAndUpdateView() {
-    canonical12 = mergeViewIntoCanonical(canonical12, words, subdivisionMode);
-    words = fromCanonical12(canonical12, subdivisionMode);
+    canonicals[subdivisionMode] = mergeViewIntoCanonical(canonicals[subdivisionMode], words, subdivisionMode);
+    
+    // Sync lyrics to other canonicals
+    synchronizeLyrics();
+
+    words = fromCanonical12(canonicals[subdivisionMode], subdivisionMode);
     render();
 }
 
@@ -772,8 +790,10 @@ function commitAndUpdateView() {
         
         // Reset subdivision and initialize canonical
         subdivisionMode = (timeSignatureDenominator === 8) ? 3 : 2;
-        canonical12 = toCanonical12(words, subdivisionMode);
-        words = fromCanonical12(canonical12, subdivisionMode); // Ensure words matches the default view
+        canonicals[2] = toCanonical12(words, 2);
+        canonicals[3] = toCanonical12(words, 3);
+        canonicals[4] = toCanonical12(words, 4);
+        words = fromCanonical12(canonicals[subdivisionMode], subdivisionMode); // Ensure words matches the default view
         updateSubdivisionButtonVisual();
         render();
     }
@@ -850,7 +870,7 @@ function commitAndUpdateView() {
 
   timeSignatureBottomBtn.addEventListener('click', () => {
     // Commit current edits to canonical BEFORE changing denominator
-    canonical12 = mergeViewIntoCanonical(canonical12, words, subdivisionMode);
+    canonicals[subdivisionMode] = mergeViewIntoCanonical(canonicals[subdivisionMode], words, subdivisionMode);
     
     if (timeSignatureDenominator === 4) {
       timeSignatureDenominator = 8;
@@ -862,7 +882,7 @@ function commitAndUpdateView() {
     }
 
     // Derive new words view from canonical
-    words = fromCanonical12(canonical12, subdivisionMode);
+    words = fromCanonical12(canonicals[subdivisionMode], subdivisionMode);
 
     timeSignatureTopBtn.textContent = timeSignatureNumerator;
     timeSignatureBottomBtn.textContent = timeSignatureDenominator;
@@ -1156,8 +1176,11 @@ function commitAndUpdateView() {
               // Note: This doesn't adjust syncopation for the added part, but it's a minor case.
           }
           
-          canonical12 = toCanonical12(words, subdivisionMode);
-          words = fromCanonical12(canonical12, subdivisionMode);
+          // Re-initialize all canonical models with the new text
+          canonicals[2] = toCanonical12(words, 2);
+          canonicals[3] = toCanonical12(words, 3);
+          canonicals[4] = toCanonical12(words, 4);
+          words = fromCanonical12(canonicals[subdivisionMode], subdivisionMode);
           
           render();
       }
@@ -1195,9 +1218,13 @@ function commitAndUpdateView() {
   sixteenthNoteBtn.addEventListener('click', () => {
     if (timeSignatureDenominator === 8) return;
 
-    canonical12 = mergeViewIntoCanonical(canonical12, words, subdivisionMode);
-    subdivisionMode = nextSubdivision(subdivisionMode, timeSignatureDenominator);
-    words = fromCanonical12(canonical12, subdivisionMode);
+    const oldMode = subdivisionMode;
+    canonicals[oldMode] = mergeViewIntoCanonical(canonicals[oldMode], words, oldMode);
+
+    const newMode = nextSubdivision(subdivisionMode, timeSignatureDenominator);
+    subdivisionMode = newMode;
+    words = fromCanonical12(canonicals[newMode], newMode);
+    
     updateSubdivisionButtonVisual();
     render();
   });
@@ -1859,7 +1886,10 @@ function commitAndUpdateView() {
   
   // Initialize canonical timeline
   subdivisionMode = (timeSignatureDenominator === 8) ? 3 : 2;
-  canonical12 = toCanonical12(words, subdivisionMode);
+  canonicals[2] = toCanonical12(words, 2);
+  canonicals[3] = toCanonical12(words, 3);
+  canonicals[4] = toCanonical12(words, 4);
+  words = fromCanonical12(canonicals[subdivisionMode], subdivisionMode);
   updateSubdivisionButtonVisual();
 
   render();
