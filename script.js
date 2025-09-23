@@ -1557,11 +1557,6 @@
       deleteBtn.addEventListener('click', (e) => {
         e.stopPropagation(); // Prevent any other click events
 
-        // First, remove any trailing rests to get the true end of the music
-        while (words.length > 0 && (words[words.length - 1] === '-' || words[words.length - 1] === '')) {
-          words.pop();
-        }
-
         if (words.length === 0) {
           render();
           return;
