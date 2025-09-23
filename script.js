@@ -154,8 +154,8 @@
   let circleIconActive = true;
   let timeSignatureNumerator = 4;
   let timeSignatureDenominator = 4;
-  let sixteenthNoteModeActive = false;
-  let originalEighthNotePattern = []; // Store the original 8th note pattern
+  let subdivisionMode = 2; // 2 | 3 | 4, default eighths
+  let canonical12 = []; // canonical timeline at 12 ticks per beat
   let hasPickupMeasure = false;
   let isFirstPlay = true;
   let isPlaying = false;
@@ -373,37 +373,6 @@
     return null;
   }
 
-  // Convert 8th note pattern to 16th note pattern by inserting inactive notes
-  function convertTo16thNotePattern(eighthNoteWords) {
-    const sixteenthNoteWords = [];
-    for (let i = 0; i < eighthNoteWords.length; i += 2) {
-      // For each beat (2 eighth notes), expand to 4 sixteenth notes
-      const firstEighth = eighthNoteWords[i] || '-';
-      const secondEighth = eighthNoteWords[i+1] || '-';
-      
-      // Add the first eighth note
-      sixteenthNoteWords.push(firstEighth);
-      // Add an inactive note after the first eighth note
-      sixteenthNoteWords.push('-');
-      // Add the second eighth note
-      sixteenthNoteWords.push(secondEighth);
-      // Add an inactive note after the second eighth note
-      sixteenthNoteWords.push('-');
-    }
-    return sixteenthNoteWords;
-  }
-
-  // Convert 16th note pattern back to 8th note pattern by removing inactive notes
-  function convertTo8thNotePattern(sixteenthNoteWords) {
-    const eighthNoteWords = [];
-    for (let i = 0; i < sixteenthNoteWords.length; i += 4) {
-      // For each beat (4 sixteenth notes), compress to 2 eighth notes
-      eighthNoteWords.push(sixteenthNoteWords[i] || '-');
-      eighthNoteWords.push(sixteenthNoteWords[i+2] || '-');
-    }
-    return eighthNoteWords;
-  }
-
   // Extract only the syllables/words that occupy active rhythm positions
   function extractActiveTokens(wordArray) {
     return wordArray.filter(word => word !== '-' && word !== '');
@@ -575,6 +544,110 @@
     notesBoxElements.forEach(box => box.classList.remove('playing'));
   }
 
+const ALLOWED_SUBDIVISIONS = [2, 3, 4];
+const WINDOW_SIZES_PER_BEAT = { 2: 6, 3: 4, 4: 3 };
+
+function getWindowSize(subdivision) {
+  return WINDOW_SIZES_PER_BEAT[subdivision] || 6;
+}
+
+function totalBeatsForWords(viewWords, subdivision) {
+  return Math.ceil((viewWords.length || 0) / subdivision);
+}
+
+// Convert current view to 12-grid canonical (no merge)
+function toCanonical12(viewWords, subdivision) {
+  const beats = totalBeatsForWords(viewWords, subdivision);
+  const win = getWindowSize(subdivision);
+  const out = new Array(beats * 12).fill('-');
+
+  for (let b = 0; b < beats; b++) {
+    for (let s = 0; s < subdivision; s++) {
+      const viewIdx = b * subdivision + s;
+      const token = (viewWords[viewIdx] !== undefined) ? viewWords[viewIdx] : '-';
+      const wStart = b * 12 + s * win;
+      out[wStart] = (token && token !== '-') ? token : '-';
+      for (let t = 1; t < win; t++) {
+        out[wStart + t] = '-';
+      }
+    }
+  }
+  return out;
+}
+
+// Project 12-grid canonical to a target subdivision view
+function fromCanonical12(canon12, subdivision) {
+  const beats = Math.ceil((canon12.length || 0) / 12);
+  const win = getWindowSize(subdivision);
+  const out = [];
+
+  for (let b = 0; b < beats; b++) {
+    for (let s = 0; s < subdivision; s++) {
+      const wStart = b * 12 + s * win;
+      const wEnd = wStart + win;
+      let placed = '-';
+      for (let k = wStart; k < wEnd && k < canon12.length; k++) {
+        const tok = canon12[k];
+        if (tok && tok !== '-') { placed = tok; break; }
+      }
+      out.push(placed);
+    }
+  }
+  return out;
+}
+
+// Merge an edited view into canonical 12-grid, beat-by-beat
+function mergeViewIntoCanonical(canon12, viewWords, subdivision) {
+  const beats = totalBeatsForWords(viewWords, subdivision);
+  const win = getWindowSize(subdivision);
+  const next = canon12.slice();
+
+  for (let b = 0; b < beats; b++) {
+    // Slice the edited beat
+    const editedBeat = [];
+    for (let s = 0; s < subdivision; s++) {
+      editedBeat.push(viewWords[b * subdivision + s] ?? '-');
+    }
+
+    // Re-derive the projected beat from canonical
+    const derivedBeat = [];
+    for (let s = 0; s < subdivision; s++) {
+      const wStart = b * 12 + s * win;
+      const wEnd = wStart + win;
+      let placed = '-';
+      for (let k = wStart; k < wEnd && k < next.length; k++) {
+        const tok = next[k];
+        if (tok && tok !== '-') { placed = tok; break; }
+      }
+      derivedBeat.push(placed);
+    }
+
+    // Compare and optionally rewrite only this beat's windows
+    let equal = true;
+    for (let i = 0; i < subdivision; i++) {
+      if ((editedBeat[i] || '-') !== (derivedBeat[i] || '-')) { equal = false; break; }
+    }
+    if (!equal) {
+      for (let s = 0; s < subdivision; s++) {
+        const token = editedBeat[s] && editedBeat[s] !== '' ? editedBeat[s] : '-';
+        const wStart = b * 12 + s * win;
+        const wEnd = wStart + win;
+        // Clear window
+        for (let k = wStart; k < wEnd && k < next.length; k++) next[k] = '-';
+        // Place token at window start if active
+        if (token !== '-') next[wStart] = token;
+      }
+    }
+  }
+  return next;
+}
+
+function commitAndUpdateView() {
+    canonical12 = mergeViewIntoCanonical(canonical12, words, subdivisionMode);
+    words = fromCanonical12(canonical12, subdivisionMode);
+    render();
+}
+
   function createImage(url) {
     const img = document.createElement('img');
     img.src = url;
@@ -584,12 +657,19 @@
   // Get layout configuration based on time signature and screen width
   function getLayoutConfig() {
     const screenWidth = window.innerWidth;
-    let circlesPerBeat = timeSignatureDenominator === 8 ? 3 : 2;
-    if (timeSignatureDenominator === 4 && sixteenthNoteModeActive) {
-        circlesPerBeat = 4;
+  
+    let circlesPerBeat;
+    if (timeSignatureDenominator === 8) {
+      circlesPerBeat = 3; // lock to triplets in compound time
+      subdivisionMode = 3; // ensure UI reflects this
+    } else {
+      circlesPerBeat = subdivisionMode; // allow 2, 3, 4 in 4/4
     }
-    const beatsPerMeasure = timeSignatureDenominator === 8 ? timeSignatureNumerator / 3 : timeSignatureNumerator;
-    
+  
+    const beatsPerMeasure = (timeSignatureDenominator === 8)
+      ? timeSignatureNumerator / 3
+      : timeSignatureNumerator;
+  
     let measuresPerLine = 1;
     if (timeSignatureDenominator === 4) { // Simple Time
       switch(timeSignatureNumerator) {
@@ -690,13 +770,11 @@
             }
         }
         
-        // Reset to 8th note mode when changing songs
-        if (sixteenthNoteModeActive) {
-            sixteenthNoteModeActive = false;
-            sixteenthNoteBtn.classList.remove('active');
-            originalEighthNotePattern = [];
-        }
-        
+        // Reset subdivision and initialize canonical
+        subdivisionMode = (timeSignatureDenominator === 8) ? 3 : 2;
+        canonical12 = toCanonical12(words, subdivisionMode);
+        words = fromCanonical12(canonical12, subdivisionMode); // Ensure words matches the default view
+        updateSubdivisionButtonVisual();
         render();
     }
   });
@@ -767,37 +845,29 @@
     }
     timeSignatureTopBtn.textContent = timeSignatureNumerator;
     
-    // Reset to 8th note mode when changing time signature
-    if (sixteenthNoteModeActive) {
-        sixteenthNoteModeActive = false;
-        sixteenthNoteBtn.classList.remove('active');
-        words = originalEighthNotePattern.slice();
-        originalEighthNotePattern = [];
-    }
-    
     render();
   });
 
   timeSignatureBottomBtn.addEventListener('click', () => {
-    // Reset to 8th note mode when changing time signature
-    if (sixteenthNoteModeActive) {
-        sixteenthNoteModeActive = false;
-        sixteenthNoteBtn.classList.remove('active');
-        words = originalEighthNotePattern.slice();
-        originalEighthNotePattern = [];
-    }
+    // Commit current edits to canonical BEFORE changing denominator
+    canonical12 = mergeViewIntoCanonical(canonical12, words, subdivisionMode);
     
     if (timeSignatureDenominator === 4) {
       timeSignatureDenominator = 8;
       timeSignatureNumerator = 6; // Default for compound time
+      subdivisionMode = 3; // Force subdivisionMode = 3
     } else {
       timeSignatureDenominator = 4;
       timeSignatureNumerator = 4; // Default for simple time
     }
+
+    // Derive new words view from canonical
+    words = fromCanonical12(canonical12, subdivisionMode);
+
     timeSignatureTopBtn.textContent = timeSignatureNumerator;
     timeSignatureBottomBtn.textContent = timeSignatureDenominator;
     timeSignatureButton.classList.toggle('compound', timeSignatureDenominator === 8);
-    updateSixteenthNoteButtonState();
+    updateSubdivisionButtonVisual();
     render();
   });
 
@@ -872,11 +942,7 @@
   function openModal() {
       // Generate the metadata header
       const timeSig = `${timeSignatureNumerator}/${timeSignatureDenominator}`;
-      let sixteenthStatus = 'no';
-      if (timeSignatureDenominator === 4 && sixteenthNoteModeActive) {
-          sixteenthStatus = 'yes';
-      }
-      const header = `[BPM:${BPM} \\ Time Signature: ${timeSig} \\ 16th notes: ${sixteenthStatus}]`;
+      const header = `[BPM:${BPM} \\ Time Signature: ${timeSig} \\ Subdivision: ${subdivisionMode}]`;
 
       // Generate the body text, handling pickup measures and syncopation
       let bodyText;
@@ -988,18 +1054,26 @@
                   }
               }
 
-              const sixteenthMatch = settingsStr.match(/16th notes: (yes|no)/);
-              if (sixteenthMatch && sixteenthMatch[1]) {
-                  if (timeSignatureDenominator === 8) {
-                      sixteenthNoteModeActive = false;
-                  } else {
-                      const newSixteenthModeActive = (sixteenthMatch[1] === 'yes');
-                      // Don't toggle the 16th note mode yet; it will be handled properly when processing the content
-                      sixteenthNoteModeActive = newSixteenthModeActive;
-                      sixteenthNoteBtn.classList.toggle('active', newSixteenthModeActive);
+              const subdivisionMatch = settingsStr.match(/Subdivision: (\d)/);
+              if (subdivisionMatch && subdivisionMatch[1]) {
+                  let newSubdivision = parseInt(subdivisionMatch[1], 10);
+                  if ([2, 3, 4].includes(newSubdivision)) {
+                      if (timeSignatureDenominator === 8) {
+                          subdivisionMode = 3;
+                      } else {
+                          subdivisionMode = newSubdivision;
+                      }
+                  }
+              } else {
+                  // Fallback for old format
+                  const sixteenthMatch = settingsStr.match(/16th notes: (yes|no)/);
+                  if (sixteenthMatch && sixteenthMatch[1]) {
+                      if (timeSignatureDenominator !== 8 && sixteenthMatch[1] === 'yes') {
+                          subdivisionMode = 4;
+                      }
                   }
               }
-              updateSixteenthNoteButtonState();
+              updateSubdivisionButtonVisual();
               
               contentText = lines.slice(1).join('\n');
           } else {
@@ -1081,49 +1155,52 @@
               words = words.concat(finalWords);
               // Note: This doesn't adjust syncopation for the added part, but it's a minor case.
           }
+          
+          canonical12 = toCanonical12(words, subdivisionMode);
+          words = fromCanonical12(canonical12, subdivisionMode);
+          
           render();
       }
       closeModal();
   });
 
-  // 16th Note Button
-  const sixteenthNoteBtn = document.getElementById('sixteenth-note-btn');
-  sixteenthNoteBtn.addEventListener('click', () => {
-      if (timeSignatureDenominator === 4) {
-          // Toggle 16th note mode
-          if (sixteenthNoteModeActive) {
-              // Switch back to 8th note mode
-              sixteenthNoteModeActive = false;
-              if (originalEighthNotePattern.length > 0) {
-                  words = originalEighthNotePattern.slice();
-                  originalEighthNotePattern = [];
-              } else {
-                  // Fallback: convert current pattern to 8th note pattern
-                  words = convertTo8thNotePattern(words);
-              }
-          } else {
-              // Switch to 16th note mode
-              sixteenthNoteModeActive = true;
-              // Store the original 8th note pattern
-              originalEighthNotePattern = words.slice();
-              // Convert to 16th note pattern
-              words = convertTo16thNotePattern(words);
-          }
-          
-          sixteenthNoteBtn.classList.toggle('active', sixteenthNoteModeActive);
-          render();
-      }
-  });
+  // Subdivision Cycle Button
+  const sixteenthNoteBtn = document.getElementById('sixteenth-note-btn'); // reuse same element
 
-  function updateSixteenthNoteButtonState() {
-      if (timeSignatureDenominator === 8) {
-          sixteenthNoteModeActive = false;
-          sixteenthNoteBtn.classList.remove('active');
-          sixteenthNoteBtn.classList.add('disabled');
-      } else {
-          sixteenthNoteBtn.classList.remove('disabled');
-      }
+  function nextSubdivision(current, denominator) {
+    if (denominator === 8) return 3; // locked in compound time
+    const order = [2, 3, 4];
+    const i = order.indexOf(current);
+    return order[(i + 1) % order.length];
   }
+
+  function updateSubdivisionButtonVisual() {
+    if (timeSignatureDenominator === 8) {
+        subdivisionMode = 3;
+        sixteenthNoteBtn.classList.add('disabled');
+    } else {
+        sixteenthNoteBtn.classList.remove('disabled');
+    }
+  
+    sixteenthNoteBtn.setAttribute('data-subdiv', String(subdivisionMode));
+    sixteenthNoteBtn.classList.remove('active', 'triplet', 'sixteenth');
+
+    if (subdivisionMode === 3) {
+        sixteenthNoteBtn.classList.add('active', 'triplet');
+    } else if (subdivisionMode === 4) {
+        sixteenthNoteBtn.classList.add('active', 'sixteenth');
+    }
+  }
+
+  sixteenthNoteBtn.addEventListener('click', () => {
+    if (timeSignatureDenominator === 8) return;
+
+    canonical12 = mergeViewIntoCanonical(canonical12, words, subdivisionMode);
+    subdivisionMode = nextSubdivision(subdivisionMode, timeSignatureDenominator);
+    words = fromCanonical12(canonical12, subdivisionMode);
+    updateSubdivisionButtonVisual();
+    render();
+  });
 
 
   // --- PLAYBACK LOGIC ---
@@ -1339,12 +1416,12 @@
             // If the user clicks the green syncopation trigger, undo it.
             if (syncopation.includes(idx)) {
                 dismantleSyncopation(idx - 1); // We need to pass the start index
-                render();
+                commitAndUpdateView();
                 return;
             }
 
             if (!isAffectedBySyncopation(idx) && applyIsolatedRhythmChange(idx)) {
-                render();
+                commitAndUpdateView();
                 return;
             }
 
@@ -1371,7 +1448,7 @@
                     words[idx] = '-';
                 }
             }
-            render();
+            commitAndUpdateView();
         });
         circlesDiv.appendChild(circle);
     }
@@ -1507,7 +1584,7 @@
                 setTimeout(() => { input.focus(); input.select(); });
                 function cleanup() { input.removeEventListener('keydown', onKey); input.removeEventListener('blur', onBlur); }
                 function onKey(e) {
-                    if (e.key === 'Enter') { e.preventDefault(); words[idx] = input.value; editingIndex = null; cleanup(); render(); }
+                    if (e.key === 'Enter') { e.preventDefault(); words[idx] = input.value; editingIndex = null; cleanup(); commitAndUpdateView(); }
                     else if (e.key === 'Escape') { e.preventDefault(); editingIndex = null; cleanup(); render(); }
                     else if (e.key === ' ' || e.code === 'Space') { 
                         e.preventDefault(); 
@@ -1517,7 +1594,7 @@
                             words.push('-');
                         }
                         cleanup(); 
-                        render();
+                        commitAndUpdateView();
                     }
                     else if ((e.key === 'Backspace' || e.key === 'Delete') && input.value === '') { 
                       e.preventDefault(); 
@@ -1527,10 +1604,10 @@
                         words.push('-');
                       }
                       cleanup(); 
-                      render(); 
+                      commitAndUpdateView(); 
                     }
                 }
-                function onBlur() { words[idx] = input.value; editingIndex = null; cleanup(); render(); }
+                function onBlur() { words[idx] = input.value; editingIndex = null; cleanup(); commitAndUpdateView(); }
                 input.addEventListener('keydown', onKey);
                 input.addEventListener('blur', onBlur);
             } else {
@@ -1606,7 +1683,7 @@
           words.length -= numToRemove;
         }
         
-        render();
+        commitAndUpdateView();
       });
       divider.appendChild(deleteBtn);
 
@@ -1620,7 +1697,7 @@
         for (let i = 0; i < config.circlesPerMeasure; i++) {
           words.push('-');
         }
-        render();
+        commitAndUpdateView();
       });
       divider.appendChild(addBtn);
     }
@@ -1673,7 +1750,7 @@
 
     container.innerHTML = '';
     notesBoxElements = [];
-    updateSixteenthNoteButtonState();
+    updateSubdivisionButtonVisual();
     const config = getLayoutConfig();
 
     const displayWords = [...words];
@@ -1779,5 +1856,11 @@
   
   applyZoom();
   setMode(chantModeActive); // Set initial mode
+  
+  // Initialize canonical timeline
+  subdivisionMode = (timeSignatureDenominator === 8) ? 3 : 2;
+  canonical12 = toCanonical12(words, subdivisionMode);
+  updateSubdivisionButtonVisual();
+
   render();
 })();
