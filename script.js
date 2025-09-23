@@ -1464,7 +1464,7 @@
 
         const pattern = activeStates.map(a => a ? 'B' : 'G').join('/');
 
-        if (pattern === 'B/G/G/G' && config.circlesPerBeat === 4) {
+        if ((pattern === 'B/G/G/G' && config.circlesPerBeat === 4) || (pattern === 'B/G/G' && config.circlesPerBeat === 3)) {
             chantDiv.classList.add('single-syllable-whole');
             const wc = document.createElement('span');
             wc.className = 'word-container';
