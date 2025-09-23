@@ -118,6 +118,32 @@
     ]
   };
 
+  const rhythmSystems = {
+    "Simplified Kodály": {
+      "2": { "B/G": ["Ta", "-"], "B/B": ["Ti", "ti"], "G/B": ["-", "ti"], "G/G": ["-", "-"] },
+      "3": { "B/G/G": ["Ta", "-", "-"], "B/B/B": ["Ti", "ti", "ti"], "B/B/G": ["Ti", "ta", "-"], "B/G/B": ["Ta", "-", "ti"], "G/B/G": ["-", "Ta", "-"], "G/B/B": ["-", "ti", "ti"], "G/G/B": ["-", "-", "ti"], "G/G/G": ["-", "-", "-"] },
+      "4": { "B/G/G/G": ["Ta", "-", "-", "-"], "B/G/B/G": ["Ti", "-", "ti", "-"], "B/B/B/B": ["Ti", "ki", "ti", "ki"], "G/B/B/B": ["-", "ki", "ti", "ki"], "B/B/B/G": ["Ti", "ki", "ti", "-"], "B/B/G/B": ["Ti", "ki", "-", "ki"], "B/G/B/B": ["Ti", "-", "ti", "ki"], "B/B/G/G": ["Ti", "ki", "-", "-"], "G/B/B/G": ["-", "ki", "ti", "-"], "G/G/B/B": ["-", "-", "ti", "ki"], "G/B/G/B": ["-", "ki", "-", "ki"], "B/G/G/B": ["Ti", "-", "-", "ki"], "G/B/G/G": ["-", "ki", "-", "-"], "G/G/B/G": ["-", "-", "ti", "-"], "G/G/G/B": ["-", "-", "-", "ki"], "G/G/G/G": ["-", "-", "-", "-"] }
+    },
+    "Beat Centered Kodály": {
+      "2": { "B/G": ["Ta", "-"], "B/B": ["Ta", "ti"], "G/B": ["-", "ti"], "G/G": ["-", "-"] },
+      "3": { "B/G/G": ["Ta", "-", "-"], "B/B/B": ["Ta", "ti", "ti"], "B/B/G": ["Ta", "ti", "-"], "B/G/B": ["Ta", "-", "ti"], "G/B/G": ["-", "Ta", "-"], "G/B/B": ["-", "ti", "ti"], "G/G/B": ["-", "-", "ti"], "G/G/G": ["-", "-", "-"] },
+      "4": { "B/G/G/G": ["Ta", "-", "-", "-"], "B/G/B/G": ["Ta", "-", "ti", "-"], "B/B/B/B": ["Ta", "ka", "ti", "ka"], "G/B/B/B": ["-", "ka", "ti", "ka"], "B/B/B/G": ["Ta", "ka", "ti", "-"], "B/B/G/B": ["Ta", "ka", "-", "ka"], "B/G/B/B": ["Ta", "-", "ti", "ka"], "B/B/G/G": ["Ta", "ka", "-", "-"], "G/B/B/G": ["-", "ka", "ti", "-"], "G/G/B/B": ["-", "-", "ti", "ka"], "G/B/G/B": ["-", "ka", "-", "ka"], "B/G/G/B": ["Ta", "-", "-", "ka"], "G/B/G/G": ["-", "ka", "-", "-"], "G/G/B/G": ["-", "-", "ti", "-"], "G/G/G/B": ["-", "-", "-", "ka"], "G/G/G/G": ["-", "-", "-", "-"] }
+    },
+    "Gordon System": {
+      "2": { "B/G": ["Du", "-"], "B/B": ["Du", "de"], "G/B": ["-", "de"], "G/G": ["-", "-"] },
+      "3": { "B/G/G": ["Du", "-", "-"], "B/B/B": ["Du", "da", "di"], "B/B/G": ["Du", "da", "-"], "B/G/B": ["Du", "-", "di"], "G/B/G": ["-", "da", "-"], "G/B/B": ["-", "da", "di"], "G/G/B": ["-", "-", "di"], "G/G/G": ["-", "-", "-"] },
+      "4": { "B/G/G/G": ["Du", "-", "-", "-"], "B/G/B/G": ["Du", "-", "de", "-"], "B/B/B/B": ["Du", "ta", "de", "ta"], "G/B/B/B": ["-", "ta", "de", "ta"], "B/B/B/G": ["Du", "ta", "de", "-"], "B/B/G/B": ["Du", "ta", "-", "ta"], "B/G/B/B": ["Du", "de", "ta", "-"], "B/B/G/G": ["Du", "ta", "-", "-"], "G/B/B/G": ["-", "ta", "de", "-"], "G/G/B/B": ["-", "-", "de", "ta"], "G/B/G/B": ["-", "ta", "-", "ta"], "B/G/G/B": ["Du", "-", "-", "ta"], "G/B/G/G": ["-", "ta", "-", "-"], "G/G/B/G": ["-", "-", "de", "-"], "G/G/G/B": ["-", "-", "-", "ta"], "G/G/G/G": ["-", "-", "-", "-"] }
+    },
+    "Takadimi System": {
+      "2": { "B/G": ["Ta", "-"], "B/B": ["Ta", "di"], "G/B": ["-", "di"], "G/G": ["-", "-"] },
+      "3": { "B/G/G": ["Ta", "-", "-"], "B/B/B": ["Ta", "ki", "da"], "B/B/G": ["Ta", "ki", "-"], "B/G/B": ["Ta", "-", "da"], "G/B/G": ["-", "ki", "-"], "G/B/B": ["-", "ki", "da"], "G/G/B": ["-", "-", "da"], "G/G/G": ["-", "-", "-"] },
+      "4": { "B/G/G/G": ["Ta", "-", "-", "-"], "B/G/B/G": ["Ta", "-", "di", "-"], "B/B/B/B": ["Ta", "ka", "di", "mi"], "G/B/B/B": ["-", "ka", "di", "mi"], "B/B/B/G": ["Ta", "ka", "di", "-"], "B/B/G/B": ["Ta", "ka", "-", "mi"], "B/G/B/B": ["Ta", "-", "di", "mi"], "B/B/G/G": ["Ta", "ka", "-", "-"], "G/B/B/G": ["-", "ka", "di", "-"], "G/G/B/B": ["-", "-", "di", "mi"], "G/B/G/B": ["-", "ka", "-", "mi"], "B/G/G/B": ["Ta", "-", "-", "mi"], "G/B/G/G": ["-", "ka", "-", "-"], "G/G/B/G": ["-", "-", "di", "-"], "G/G/G/B": ["-", "-", "-", "mi"], "G/G/G/G": ["-", "-", "-", "-"] }
+    },
+    "Fruit Rhythms": {
+      // Data to be added later
+    }
+  };
+
   let words = lyricsLibrary['hickory-dickory-dock'].slice(); // Start with default lyrics
   
   let syncopation = []; // Track syncopated positions
@@ -141,6 +167,7 @@
   let textImportMode = 'replace'; // 'add' or 'replace'
   let savedTextInput = ''; // Store the text from the modal
   let chantModeActive = false;
+  let currentRhythmSystem = 'Simplified Kodály';
 
   // Audio context for generating sounds
   let audioContext = null;
@@ -668,6 +695,11 @@
         
         render();
     }
+  });
+
+  rhythmSystemsDropdown.addEventListener('change', (e) => {
+    currentRhythmSystem = e.target.value;
+    render();
   });
 
 
@@ -1242,42 +1274,13 @@
       }
   }
 
-  function getChantText(activeStates) {
+  function getChantText(activeStates, system, circlesPerBeat) {
     const pattern = activeStates.map(a => a ? 'B' : 'G').join('/');
-    switch (pattern) {
-      // Two-circle
-      case 'B/G': return ['Ta', '-'];
-      case 'B/B': return ['Ti', 'ti'];
-      case 'G/B': return ['-', 'ti'];
-      case 'G/G': return ['-', '-'];
-      // Three-circle
-      case 'B/G/G': return ['Ta', '-', '-'];
-      case 'B/B/G': return ['Ti', 'Ta', '-'];
-      case 'B/B/B': return ['Ti', 'ti', 'ti'];
-      case 'G/B/G': return ['-', 'Ta', '-'];
-      case 'G/B/B': return ['-', 'ti', 'ti'];
-      case 'G/G/B': return ['-', '-', 'ti'];
-      case 'B/G/B': return ['Ta', '-', 'ti'];
-      case 'G/G/G': return ['-', '-', '-'];
-      // Four-circle
-      case 'B/G/G/G': return ['Ta', '-', '-', '-'];
-      case 'B/G/B/G': return ['Ti', '-', 'ti', '-'];
-      case 'B/B/B/B': return ['Ti', 'ki', 'ti', 'ki'];
-      case 'B/B/B/G': return ['Ti', 'ki', 'ti', '-'];
-      case 'B/G/B/B': return ['Ti', '-', 'ti', 'ki'];
-      case 'G/B/B/B': return ['-', 'ki', 'ti', 'ki'];
-      case 'G/B/G/G': return ['-', 'ki', '-', '-'];
-      case 'G/G/B/G': return ['-', '-', 'ti', '-'];
-      case 'G/G/G/B': return ['-', '-', '-', 'ki'];
-      case 'B/B/G/G': return ['Ti', 'ki', '-', '-'];
-      case 'G/B/G/B': return ['-', 'ki', '-', 'ki'];
-      case 'G/B/B/G': return ['-', 'ki', 'ti', '-'];
-      case 'B/B/G/B': return ['Ti', 'ki', '-', 'ti'];
-      case 'G/G/B/B': return ['-', '-', 'ti', 'ki'];
-      case 'G/G/G/G': return ['-', '-', '-', '-'];
-      case 'B/G/G/B': return ['Ti', '-', '-', 'ki'];
-      default: return [];
+    const systemData = rhythmSystems[system];
+    if (systemData && systemData[circlesPerBeat] && systemData[circlesPerBeat][pattern]) {
+      return systemData[circlesPerBeat][pattern];
     }
+    return activeStates.map(a => a ? '?' : '-'); // Default fallback
   }
 
   function createBeatGroup(beatStartPosition, config, displayWords) {
@@ -1445,7 +1448,7 @@
     group.appendChild(notesBox);
 
     if (chantModeActive) {
-        const chantSyllables = getChantText(activeStates);
+        const chantSyllables = getChantText(activeStates, currentRhythmSystem, config.circlesPerBeat);
         const chantDiv = document.createElement('div');
         chantDiv.className = 'words';
         if (config.circlesPerBeat === 4) {
