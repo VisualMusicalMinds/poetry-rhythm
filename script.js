@@ -1450,7 +1450,7 @@
 
             // Add extra space for "Ti ti" when not in 16th note mode
             if (!sixteenthNoteModeActive && i === 1 && chantSyllables.length === 2 && chantSyllables[0] === 'Ti' && syllable === 'ti') {
-                wc.style.marginLeft = '8px';
+                wc.classList.add('extra-spacing');
             }
 
             const span = document.createElement('span');
