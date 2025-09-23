@@ -1461,19 +1461,34 @@
         } else if (config.circlesPerBeat === 2) {
             chantDiv.classList.add('eighth-chant');
         }
-        chantSyllables.forEach((syllable, i) => {
+
+        const pattern = activeStates.map(a => a ? 'B' : 'G').join('/');
+
+        if (pattern === 'B/G/G/G' && config.circlesPerBeat === 4) {
+            chantDiv.classList.add('single-syllable-whole');
             const wc = document.createElement('span');
             wc.className = 'word-container';
 
             const span = document.createElement('span');
             span.className = 'word';
-            if (syllable === '-') {
-                span.classList.add('rest');
-            }
-            span.textContent = syllable;
+            span.textContent = chantSyllables[0];
             wc.appendChild(span);
             chantDiv.appendChild(wc);
-        });
+        } else {
+            chantSyllables.forEach((syllable, i) => {
+                const wc = document.createElement('span');
+                wc.className = 'word-container';
+
+                const span = document.createElement('span');
+                span.className = 'word';
+                if (syllable === '-') {
+                    span.classList.add('rest');
+                }
+                span.textContent = syllable;
+                wc.appendChild(span);
+                chantDiv.appendChild(wc);
+            });
+        }
         group.appendChild(chantDiv);
     } else {
         const wordsDiv = document.createElement('div');
