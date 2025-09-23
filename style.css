@@ -694,13 +694,6 @@ body { margin: 0; padding: 0; }
 #poem.zoom-level-4 { font-size: 1.8em; }  /* 1.2em * 1.5  = 1.8em */
 #poem.zoom-level-5 { font-size: 2.1em; }  /* 1.2em * 1.75 = 2.1em */
 
-.word-container.extra-spacing {
-  margin-left: 12px;
-}
-
-.word-container.chant-spacer {
-  width: 1.5em;
-}
 
 .words.sixteenth-chant {
     width: 6em;
