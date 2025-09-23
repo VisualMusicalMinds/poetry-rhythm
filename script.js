@@ -375,6 +375,73 @@
     return eighthNoteWords;
   }
 
+  // Extract only the syllables/words that occupy active rhythm positions
+  function extractActiveTokens(wordArray) {
+    return wordArray.filter(word => word !== '-' && word !== '');
+  }
+
+  // Count trailing rests so we can keep them anchored at the end of the timeline
+  function countTrailingRests(wordArray) {
+    let count = 0;
+    for (let i = wordArray.length - 1; i >= 0; i--) {
+      if (wordArray[i] === '-' || wordArray[i] === '') count++;
+      else break;
+    }
+    return count;
+  }
+
+  // Rebuild the words array so that the supplied active states receive tokens in order
+  function rebuildWordsFromActiveStates(tokens, activeStates) {
+    const rebuilt = [];
+    let tokenIndex = 0;
+
+    for (let i = 0; i < activeStates.length; i++) {
+      if (activeStates[i]) {
+        if (tokenIndex < tokens.length) rebuilt.push(tokens[tokenIndex++]);
+        else rebuilt.push(' ');
+      } else {
+        rebuilt.push('-');
+      }
+    }
+
+    while (tokenIndex < tokens.length) {
+      rebuilt.push(tokens[tokenIndex++]);
+    }
+
+    return rebuilt;
+  }
+
+  // Toggle a rhythm position while preserving the surrounding beat patterns
+  function applyIsolatedRhythmChange(position) {
+    if (syncopation.length > 0) return false; // Avoid breaking stored syncopation indices
+
+    const tokens = extractActiveTokens(words);
+    const activeStates = words.map(word => word !== '-' && word !== '');
+
+    if (!activeStates[position] && tokens.length === 0 && position >= words.length) {
+      // Nothing to shift yet – fall back to legacy behaviour
+      return false;
+    }
+
+    const wasActive = activeStates[position] || false;
+    const trailingRestCount = countTrailingRests(words);
+
+    activeStates[position] = !wasActive;
+
+    let activeCount = activeStates.reduce((sum, state) => sum + (state ? 1 : 0), 0);
+    if (activeCount < tokens.length) {
+      const needed = tokens.length - activeCount;
+      let insertPos = Math.max(position + 1, activeStates.length - trailingRestCount);
+      for (let i = 0; i < needed; i++) {
+        activeStates.splice(insertPos, 0, true);
+        insertPos++;
+      }
+    }
+
+    words = rebuildWordsFromActiveStates(tokens, activeStates);
+    return true;
+  }
+
   // Check if a position should be considered active (for rhythm and display)
   function isPositionActive(position, wordArray) {
     if (isAffectedBySyncopation(position)) {
@@ -1262,6 +1329,11 @@
             // If the user clicks the green syncopation trigger, undo it.
             if (syncopation.includes(idx)) {
                 dismantleSyncopation(idx - 1); // We need to pass the start index
+                render();
+                return;
+            }
+
+            if (!isAffectedBySyncopation(idx) && applyIsolatedRhythmChange(idx)) {
                 render();
                 return;
             }
