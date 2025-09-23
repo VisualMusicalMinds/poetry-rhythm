@@ -1257,7 +1257,7 @@
       case 'G/G/G': return ['-', '-', '-'];
       // Four-circle
       case 'B/G/G/G': return ['Ta', '-', '-', '-'];
-      case 'B/G/B/G': return ['Ti', '_space_', 'ti', ''];
+      case 'B/G/B/G': return ['Ti', '-', 'ti', '-'];
       case 'B/B/B/B': return ['Ti', 'ki', 'ti', 'ki'];
       case 'B/B/B/G': return ['Ti', 'ki', 'ti', '-'];
       case 'B/G/B/B': return ['Ti', '-', 'ti', 'ki'];
@@ -1450,16 +1450,6 @@
         chantSyllables.forEach((syllable, i) => {
             const wc = document.createElement('span');
             wc.className = 'word-container';
-
-            // Add extra space for "Ti ti" when not in 16th note mode
-            if (!sixteenthNoteModeActive && i === 1 && chantSyllables.length === 2 && chantSyllables[0] === 'Ti' && syllable === 'ti') {
-                wc.classList.add('extra-spacing');
-            }
-            
-            if (syllable === '_space_') {
-                wc.classList.add('chant-spacer');
-                syllable = '';
-            }
 
             const span = document.createElement('span');
             span.className = 'word';
