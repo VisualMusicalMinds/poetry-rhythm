@@ -644,6 +644,8 @@
 
   // Lyrics Dropdown
   const lyricsDropdown = document.getElementById('lyrics-dropdown');
+  const rhythmSystemsDropdown = document.getElementById('rhythm-systems-dropdown');
+
   function populateLyricsDropdown() {
     lyricsDropdown.innerHTML = ''; // Clear existing options
     for (const key in lyricsLibrary) {
@@ -706,7 +708,6 @@
   // Mode Toggle
   const poetryModeBtn = document.getElementById('poetry-mode-btn');
   const chantModeBtn = document.getElementById('chant-mode-btn');
-  const rhythmSystemsDropdown = document.getElementById('rhythm-systems-dropdown');
 
   function setMode(isChant) {
     chantModeActive = isChant;
