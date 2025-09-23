@@ -1448,6 +1448,8 @@
             chantDiv.classList.add('sixteenth-chant');
         } else if (config.circlesPerBeat === 3) {
             chantDiv.classList.add('triplet-chant');
+        } else if (config.circlesPerBeat === 2) {
+            chantDiv.classList.add('eighth-chant');
         }
         chantSyllables.forEach((syllable, i) => {
             const wc = document.createElement('span');
