@@ -879,6 +879,7 @@ function commitAndUpdateView() {
     } else {
       timeSignatureDenominator = 4;
       timeSignatureNumerator = 4; // Default for simple time
+      subdivisionMode = 2; // Default to 8th notes for simple time
     }
 
     // Derive new words view from canonical
@@ -1190,28 +1191,19 @@ function commitAndUpdateView() {
   // Subdivision Cycle Button
   const sixteenthNoteBtn = document.getElementById('sixteenth-note-btn'); // reuse same element
 
-  function nextSubdivision(current, denominator) {
-    if (denominator === 8) return 3; // locked in compound time
-    const order = [2, 3, 4];
-    const i = order.indexOf(current);
-    return order[(i + 1) % order.length];
-  }
-
   function updateSubdivisionButtonVisual() {
+    // Set disabled state based on time signature
     if (timeSignatureDenominator === 8) {
-        subdivisionMode = 3;
         sixteenthNoteBtn.classList.add('disabled');
     } else {
         sixteenthNoteBtn.classList.remove('disabled');
     }
   
-    sixteenthNoteBtn.setAttribute('data-subdiv', String(subdivisionMode));
-    sixteenthNoteBtn.classList.remove('active', 'triplet', 'sixteenth');
-
-    if (subdivisionMode === 3) {
-        sixteenthNoteBtn.classList.add('active', 'triplet');
-    } else if (subdivisionMode === 4) {
-        sixteenthNoteBtn.classList.add('active', 'sixteenth');
+    // Set active state based on subdivision mode (only for simple time)
+    if (subdivisionMode === 4) {
+        sixteenthNoteBtn.classList.add('active');
+    } else {
+        sixteenthNoteBtn.classList.remove('active');
     }
   }
 
@@ -1221,7 +1213,8 @@ function commitAndUpdateView() {
     const oldMode = subdivisionMode;
     canonicals[oldMode] = mergeViewIntoCanonical(canonicals[oldMode], words, oldMode);
 
-    const newMode = nextSubdivision(subdivisionMode, timeSignatureDenominator);
+    // Toggle between 8th (2) and 16th (4) notes
+    const newMode = (subdivisionMode === 2) ? 4 : 2;
     subdivisionMode = newMode;
     words = fromCanonical12(canonicals[newMode], newMode);
     
