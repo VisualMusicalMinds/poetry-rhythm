@@ -1599,6 +1599,20 @@
         render();
       });
       divider.appendChild(deleteBtn);
+
+      const addBtn = document.createElement('div');
+      addBtn.className = 'add-measure-btn';
+      addBtn.textContent = '+';
+      addBtn.title = 'Add a new measure';
+      addBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const config = getLayoutConfig();
+        for (let i = 0; i < config.circlesPerMeasure; i++) {
+          words.push('-');
+        }
+        render();
+      });
+      divider.appendChild(addBtn);
     }
 
     return divider;
