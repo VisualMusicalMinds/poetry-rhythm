@@ -674,22 +674,26 @@
   // Mode Toggle
   const poetryModeBtn = document.getElementById('poetry-mode-btn');
   const chantModeBtn = document.getElementById('chant-mode-btn');
+  const rhythmSystemsDropdown = document.getElementById('rhythm-systems-dropdown');
+
+  function setMode(isChant) {
+    chantModeActive = isChant;
+    poetryModeBtn.classList.toggle('active', !isChant);
+    chantModeBtn.classList.toggle('active', isChant);
+    lyricsDropdown.classList.toggle('hidden', isChant);
+    rhythmSystemsDropdown.classList.toggle('hidden', !isChant);
+    render();
+  }
 
   poetryModeBtn.addEventListener('click', () => {
     if (chantModeActive) {
-      chantModeActive = false;
-      poetryModeBtn.classList.add('active');
-      chantModeBtn.classList.remove('active');
-      render();
+      setMode(false);
     }
   });
 
   chantModeBtn.addEventListener('click', () => {
     if (!chantModeActive) {
-      chantModeActive = true;
-      chantModeBtn.classList.add('active');
-      poetryModeBtn.classList.remove('active');
-      render();
+      setMode(true);
     }
   });
 
@@ -1691,5 +1695,6 @@
   });
   
   applyZoom();
+  setMode(chantModeActive); // Set initial mode
   render();
 })();
