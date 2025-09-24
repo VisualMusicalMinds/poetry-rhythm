@@ -1074,151 +1074,92 @@ function commitAndUpdateView() {
   });
   
   modalSubmitBtn.addEventListener('click', () => {
-      const text = multiLineInput.value;
-      if (text) {
-          savedTextInput = text;
-          const lines = text.split('\n');
-          let firstLine = lines[0];
-          let contentText;
+    const text = multiLineInput.value;
+    if (!text) {
+        closeModal();
+        return;
+    }
 
-          if (firstLine.startsWith('[') && firstLine.endsWith(']')) {
-              const settingsStr = firstLine.slice(1, -1);
-              
-              const bpmMatch = settingsStr.match(/BPM:(\d+)/);
-              if (bpmMatch && bpmMatch[1]) {
-                  let newBPM = parseInt(bpmMatch[1], 10);
-                  if (!isNaN(newBPM)) {
-                      if (newBPM > 600) newBPM = 600;
-                      if (newBPM <= 20) newBPM = 21;
-                      BPM = newBPM;
-                      bpmValueSpan.textContent = BPM;
-                  }
-              }
+    savedTextInput = text;
 
-              const tsMatch = settingsStr.match(/Time Signature: (\d+)\/(\d+)/);
-              if (tsMatch && tsMatch[1] && tsMatch[2]) {
-                  const newNumerator = parseInt(tsMatch[1], 10);
-                  const newDenominator = parseInt(tsMatch[2], 10);
-                  if (!isNaN(newNumerator) && !isNaN(newDenominator)) {
-                      timeSignatureNumerator = newNumerator;
-                      timeSignatureDenominator = newDenominator;
-                      timeSignatureTopBtn.textContent = newNumerator;
-                      timeSignatureBottomBtn.textContent = newDenominator;
-                      timeSignatureButton.classList.toggle('compound', newDenominator === 8);
-                  }
-              }
+    // Split the text into sections based on the header lines
+    const sections = text.split(/(?=\[BPM:)/).filter(s => s.trim());
 
-              const subdivisionMatch = settingsStr.match(/Subdivision: (\d)/);
-              if (subdivisionMatch && subdivisionMatch[1]) {
-                  let newSubdivision = parseInt(subdivisionMatch[1], 10);
-                  if ([2, 3, 4].includes(newSubdivision)) {
-                      if (timeSignatureDenominator === 8) {
-                          subdivisionMode = 3;
-                      } else {
-                          subdivisionMode = newSubdivision;
-                      }
-                  }
-              } else {
-                  // Fallback for old format
-                  const sixteenthMatch = settingsStr.match(/16th notes: (yes|no)/);
-                  if (sixteenthMatch && sixteenthMatch[1]) {
-                      if (timeSignatureDenominator !== 8 && sixteenthMatch[1] === 'yes') {
-                          subdivisionMode = 4;
-                      }
-                  }
-              }
-              updateSubdivisionButtonVisual();
-              
-              contentText = lines.slice(1).join('\n');
-          } else {
-              contentText = text;
-          }
-          
-          if (contentText.includes('|')) {
-              hasPickupMeasure = true;
-              contentText = contentText.replace(/\|/g, ''); // Use regex to remove all instances
-          } else {
-              hasPickupMeasure = false;
-          }
+    if (textImportMode === 'replace') {
+        // Clear existing canonicals if we are replacing
+        canonicals = { 2: [], 3: [], 4: [] };
+        words = [];
+        syncopation = [];
+        syncopationStates = {};
+    }
 
-          const newSyncopation = [];
-          const newSyncopationStates = {};
-          const finalWords = [];
-          
-          const tokens = contentText.trim().replace(/\n/g, ' ').split(/(\[[^\]]+\])|\s+/).filter(Boolean);
-          const tempConfig = getLayoutConfig(); // Use a temporary config based on modal settings
+    sections.forEach(sectionText => {
+        const lines = sectionText.trim().split('\n');
+        const header = lines[0];
+        let contentText = lines.slice(1).join('\n');
 
-          for(let i=0; i<tokens.length; i++) {
-              let token = tokens[i].trim();
-              if (token.startsWith('[') && token.endsWith(']')) {
-                  const syncGroup = token.slice(1, -1).split(/\s+/).filter(Boolean);
-                  const w1 = syncGroup[0] || '-';
-                  const w2 = syncGroup[1] || '-';
-                  const w3 = syncGroup[2] || '-';
+        if (!header.startsWith('[') || !header.endsWith(']')) return; // Skip invalid sections
 
-                  // --- Start of Re-implemented Creation-Time Logic ---
-                  let currentPos = finalWords.length;
-                  let posInMeasure = currentPos % tempConfig.circlesPerMeasure;
-                  let beatInMeasure = Math.floor(posInMeasure / tempConfig.circlesPerBeat);
+        const settingsStr = header.slice(1, -1);
+        let sectionType = 0;
 
-                  let isValid = (currentPos % 2 === 0) && (beatInMeasure < tempConfig.beatsPerMeasure - 1);
+        // Determine the section type (subdivision)
+        const sectionMatch = settingsStr.match(/Section: (8th Notes|16th Notes|Triplet)/);
+        if (sectionMatch) {
+            switch (sectionMatch[1]) {
+                case '8th Notes': sectionType = 2; break;
+                case '16th Notes': sectionType = 4; break;
+                case 'Triplet': sectionType = 3; break;
+            }
+        }
 
-                  if (!isValid) {
-                      let nextPos = currentPos;
-                      if (nextPos % 2 !== 0) { // If it's on an upbeat, push to next downbeat
-                          nextPos++;
-                      }
-                      
-                      let nextPosInMeasure = nextPos % tempConfig.circlesPerMeasure;
-                      let nextBeatInMeasure = Math.floor(nextPosInMeasure / tempConfig.circlesPerBeat);
-                      
-                      // If it's on the last beat, push to the next measure
-                      if (nextBeatInMeasure >= tempConfig.beatsPerMeasure - 1) {
-                          nextPos = currentPos - posInMeasure + tempConfig.circlesPerMeasure;
-                      }
+        if (sectionType === 0) return; // Skip if we can't identify the section
 
-                      for (let j = currentPos; j < nextPos; j++) {
-                          finalWords.push('-');
-                      }
-                  }
-                  // --- End of Re-implemented Creation-Time Logic ---
+        // Parse BPM and Time Signature from the header
+        // Note: This will apply the settings from the *last* parsed section globally.
+        const bpmMatch = settingsStr.match(/BPM:(\d+)/);
+        if (bpmMatch && bpmMatch[1]) {
+            let newBPM = parseInt(bpmMatch[1], 10);
+            if (!isNaN(newBPM) && newBPM > 20 && newBPM <= 600) {
+                BPM = newBPM;
+                bpmValueSpan.textContent = BPM;
+            }
+        }
 
-                  const syncStartIndex = finalWords.length;
-                  const syncTriggerPos = syncStartIndex + 1;
-                  const affectedBeatStart = syncStartIndex + 2;
+        const tsMatch = settingsStr.match(/Time Signature: (\d+)\/(\d+)/);
+        if (tsMatch && tsMatch[1] && tsMatch[2]) {
+            const newNumerator = parseInt(tsMatch[1], 10);
+            const newDenominator = parseInt(tsMatch[2], 10);
+            // We only update the global time signature if it matches the expected for the section
+            if ((sectionType === 3 && newDenominator === 8) || (sectionType !== 3 && newDenominator === 4)) {
+                timeSignatureNumerator = newNumerator;
+                timeSignatureDenominator = newDenominator;
+                timeSignatureTopBtn.textContent = newNumerator;
+                timeSignatureBottomBtn.textContent = newDenominator;
+                timeSignatureButton.classList.toggle('compound', newDenominator === 8);
+            }
+        }
 
-                  newSyncopation.push(syncTriggerPos);
-                  
-                  finalWords.push(w1 === '\\' ? '-' : w1);
-                  finalWords.push(w2 === '\\' ? '-' : w2);
-                  finalWords.push('-');
-                  finalWords.push(w3 === '\\' ? '-' : w3);
+        // Parse words from the content
+        if (contentText.includes('|')) {
+            hasPickupMeasure = true; // This will be a global setting based on the last parsed section with a pickup
+            contentText = contentText.replace(/\|/g, '');
+        } else {
+            hasPickupMeasure = false;
+        }
 
-                  newSyncopationStates[affectedBeatStart] = false;
-                  newSyncopationStates[affectedBeatStart + 1] = (w3 !== '-' && w3 !== '\\');
-              } else {
-                  finalWords.push(token === '\\' ? '-' : token);
-              }
-          }
+        const sectionWords = contentText.trim().split(/\s+/).map(token => token === '\\' ? '-' : token);
+        
+        // Update the specific canonical model for this section
+        // We are assuming no syncopation in this simplified import for now.
+        canonicals[sectionType] = toCanonical12(sectionWords, sectionType);
+    });
 
-          if (textImportMode === 'replace') {
-              words = finalWords;
-              syncopation = newSyncopation;
-              syncopationStates = newSyncopationStates;
-          } else {
-              words = words.concat(finalWords);
-              // Note: This doesn't adjust syncopation for the added part, but it's a minor case.
-          }
-          
-          // Re-initialize all canonical models with the new text
-          canonicals[2] = toCanonical12(words, 2);
-          canonicals[3] = toCanonical12(words, 3);
-          canonicals[4] = toCanonical12(words, 4);
-          words = fromCanonical12(canonicals[subdivisionMode], subdivisionMode);
-          
-          render();
-      }
-      closeModal();
+    // After processing all sections, update the main view to reflect the current mode
+    words = fromCanonical12(canonicals[subdivisionMode], subdivisionMode);
+    updateSubdivisionButtonVisual();
+    render();
+    closeModal();
   });
 
   // Subdivision Cycle Button
