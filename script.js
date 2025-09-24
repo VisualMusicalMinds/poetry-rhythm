@@ -1667,43 +1667,46 @@ function commitAndUpdateView() {
       deleteBtn.textContent = 'X';
       deleteBtn.title = 'Delete last measure';
       deleteBtn.addEventListener('click', (e) => {
-        e.stopPropagation(); // Prevent any other click events
-
-        if (words.length === 0) {
-          render();
-          return;
-        }
+        e.stopPropagation();
 
         const config = getLayoutConfig();
-        let numToRemove;
+        const currentCanon = canonicals[subdivisionMode];
+        const currentView = fromCanonical12(currentCanon, subdivisionMode);
+
+        if (currentView.length === 0) {
+          return; // Nothing to delete
+        }
+
+        let numCirclesToRemove;
 
         if (hasPickupMeasure) {
           const pickupSize = config.circlesPerBeat;
-          if (words.length <= pickupSize) {
-            // If only the pickup measure (or part of it) exists, delete it.
-            words.length = 0;
+          if (currentView.length <= pickupSize) {
+            numCirclesToRemove = currentView.length;
           } else {
-            // Calculate what's in the main body of the song
-            const bodyLength = words.length - pickupSize;
-            // Find out how many circles are in the last measure of the body
-            numToRemove = bodyLength % config.circlesPerMeasure;
-            if (numToRemove === 0) {
-              // If the last measure is full, remove a full measure's worth
-              numToRemove = config.circlesPerMeasure;
+            const bodyLength = currentView.length - pickupSize;
+            numCirclesToRemove = bodyLength % config.circlesPerMeasure;
+            if (numCirclesToRemove === 0) {
+              numCirclesToRemove = config.circlesPerMeasure;
             }
-            words.length -= numToRemove;
           }
         } else {
-          // No pickup measure, simpler logic
-          numToRemove = words.length % config.circlesPerMeasure;
-          if (numToRemove === 0) {
-            // If the last measure is full, remove a full measure's worth
-            numToRemove = config.circlesPerMeasure;
+          numCirclesToRemove = currentView.length % config.circlesPerMeasure;
+          if (numCirclesToRemove === 0) {
+            numCirclesToRemove = config.circlesPerMeasure;
           }
-          words.length -= numToRemove;
+        }
+
+        if (numCirclesToRemove > 0) {
+            const beatsToRemove = numCirclesToRemove / config.circlesPerBeat;
+            const ticksToRemove = beatsToRemove * 12;
+            
+            const newLength = Math.max(0, currentCanon.length - ticksToRemove);
+            canonicals[subdivisionMode].length = newLength;
         }
         
-        commitAndUpdateView();
+        words = fromCanonical12(canonicals[subdivisionMode], subdivisionMode);
+        render();
       });
       divider.appendChild(deleteBtn);
 
@@ -1714,10 +1717,12 @@ function commitAndUpdateView() {
       addBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         const config = getLayoutConfig();
-        for (let i = 0; i < config.circlesPerMeasure; i++) {
-          words.push('-');
+        const ticksToAdd = config.beatsPerMeasure * 12;
+        for (let i = 0; i < ticksToAdd; i++) {
+          canonicals[subdivisionMode].push('-');
         }
-        commitAndUpdateView();
+        words = fromCanonical12(canonicals[subdivisionMode], subdivisionMode);
+        render();
       });
       divider.appendChild(addBtn);
     }
