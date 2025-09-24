@@ -387,6 +387,47 @@ body { margin: 0; padding: 0; }
     color: #333;
 }
 
+#save-options-container {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.save-option-btn {
+    padding: 8px 16px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    cursor: pointer;
+    font-size: 0.9em;
+    background-color: #f0f0f0;
+    transition: all 0.2s ease;
+}
+
+.save-option-btn:hover {
+    border-color: #999;
+}
+
+.save-option-btn.active {
+    color: white;
+    font-weight: bold;
+}
+
+#save-8th-btn.active {
+    background-color: #007bff; /* Blue */
+    border-color: #0056b3;
+}
+
+#save-16th-btn.active {
+    background-color: #28a745; /* Green */
+    border-color: #1e7e34;
+}
+
+#save-triplet-btn.active {
+    background-color: #ffc107; /* Yellow */
+    border-color: #d39e00;
+}
+
 #multi-line-input {
     width: 100%;
     height: 200px;
