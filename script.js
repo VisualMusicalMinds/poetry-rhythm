@@ -959,30 +959,55 @@ function commitAndUpdateView() {
   const modalCopyBtn = document.getElementById('modal-copy-btn');
   const toggleAddBtn = document.getElementById('toggle-add-btn');
   const toggleReplaceBtn = document.getElementById('toggle-replace-btn');
+  const save8thBtn = document.getElementById('save-8th-btn');
+  const save16thBtn = document.getElementById('save-16th-btn');
+  const saveTripletBtn = document.getElementById('save-triplet-btn');
+
+  function generateSaveText() {
+    let fullText = '';
+    const activeButtons = document.querySelectorAll('.save-option-btn.active');
+    
+    activeButtons.forEach(button => {
+        let section;
+        let wordsForView;
+        let timeSigForView;
+
+        switch (button.id) {
+            case 'save-8th-btn':
+                section = '8th Notes';
+                wordsForView = fromCanonical12(canonicals[2], 2);
+                timeSigForView = '4/4';
+                break;
+            case 'save-16th-btn':
+                section = '16th Notes';
+                wordsForView = fromCanonical12(canonicals[4], 4);
+                timeSigForView = '4/4';
+                break;
+            case 'save-triplet-btn':
+                section = 'Triplet';
+                wordsForView = fromCanonical12(canonicals[3], 3);
+                timeSigForView = '6/8';
+                break;
+        }
+
+        const header = `[BPM:${BPM} \\ Time Signature: ${timeSigForView} \\ Section: ${section}]`;
+        
+        // This is a simplified version of wordsToText for the specific view
+        const bodyText = wordsForView.map(word => (word === '-' || word === '') ? '\\' : word).join(' ');
+
+        fullText += `${header}\n${bodyText}\n\n`;
+    });
+
+    multiLineInput.value = fullText.trim();
+  }
+
 
   function openModal() {
-      // Generate the metadata header
-      const timeSig = `${timeSignatureNumerator}/${timeSignatureDenominator}`;
-      const header = `[BPM:${BPM} \\ Time Signature: ${timeSig} \\ Subdivision: ${subdivisionMode}]`;
-
-      // Generate the body text, handling pickup measures and syncopation
-      let bodyText;
-      const textWithSyncopation = wordsToText();
-
-      if (hasPickupMeasure) {
-          const config = getLayoutConfig();
-          const wordTokens = textWithSyncopation.split(' ');
-          const pickupText = wordTokens.slice(0, config.circlesPerBeat).join(' ');
-          const remainingText = wordTokens.slice(config.circlesPerBeat).join(' ');
-          bodyText = `${pickupText} | ${remainingText}`;
-      } else {
-          bodyText = textWithSyncopation;
-      }
-
-      const fullText = `${header}\n${bodyText}`;
-      multiLineInput.value = fullText;
-      
-      savedTextInput = fullText;
+      // Set default state and generate initial text
+      save8thBtn.classList.add('active');
+      save16thBtn.classList.remove('active');
+      saveTripletBtn.classList.remove('active');
+      generateSaveText();
       modal.style.display = 'flex';
   }
 
@@ -991,6 +1016,14 @@ function commitAndUpdateView() {
   }
 
   saveBtn.addEventListener('click', openModal);
+
+  [save8thBtn, save16thBtn, saveTripletBtn].forEach(btn => {
+    btn.addEventListener('click', () => {
+        btn.classList.toggle('active');
+        generateSaveText();
+    });
+  });
+
   modalCancelBtn.addEventListener('click', closeModal);
   let modalMousedownOnBackdrop = false;
   modal.addEventListener('mousedown', e => {
