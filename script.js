@@ -171,8 +171,37 @@
   let chantModeActive = false;
   let currentRhythmSystem = 'Simplified Kodály';
 
+  // NEW: independent chant mode active states per subdivision (2,3,4)
+  let chantActiveBySubdivision = { 2: [], 3: [], 4: [] };
+
   // Audio context for generating sounds
   let audioContext = null;
+
+// --- NEW HELPERS FOR CHANT MODE ---
+
+  function deriveActiveStatesFromWords(wordArray) {
+    return wordArray.map(w => w !== '-' && w !== '');
+  }
+
+  function ensureChantArrayInitializedForCurrentView() {
+    const arr = chantActiveBySubdivision[subdivisionMode];
+    if (!arr || arr.length === 0) {
+      // Initialize from current words view without altering lyrics
+      chantActiveBySubdivision[subdivisionMode] = deriveActiveStatesFromWords(
+        fromCanonical12(canonicals[subdivisionMode], subdivisionMode)
+      );
+    }
+  }
+
+  function ensureChantArrayLengthForCurrentView(targetLen) {
+    const arr = chantActiveBySubdivision[subdivisionMode];
+    if (!arr) return;
+    if (arr.length < targetLen) {
+      arr.push(...new Array(targetLen - arr.length).fill(false));
+    } else if (arr.length > targetLen) {
+      arr.length = targetLen;
+    }
+  }
 
   function initAudioContext() {
     if (!audioContext) {
@@ -480,6 +509,13 @@ function applyIsolatedRhythmChange(position) {
 
   // Check if a position should be considered active (for rhythm and display)
   function isPositionActive(position, wordArray) {
+    // NEW: In chant mode, use independent chant states only
+    if (chantModeActive) {
+      ensureChantArrayInitializedForCurrentView();
+      ensureChantArrayLengthForCurrentView(wordArray.length);
+      return !!chantActiveBySubdivision[subdivisionMode][position];
+    }
+
     if (isAffectedBySyncopation(position)) {
       return syncopationStates[position] || false;
     } else {
@@ -536,6 +572,14 @@ function applyIsolatedRhythmChange(position) {
 
   // Get rhythm pattern from current words including syncopation
   function getRhythmPattern() {
+    // NEW: In chant mode, playback should follow chant states directly
+    if (chantModeActive) {
+      ensureChantArrayInitializedForCurrentView();
+      ensureChantArrayLengthForCurrentView(words.length);
+      // Copy only the current visible length of the words array
+      return chantActiveBySubdivision[subdivisionMode].slice(0, words.length);
+    }
+
     const pattern = [];
     for (let i = 0; i < words.length; i++) {
       const hasWord = words[i] !== '-' && words[i] !== '';
@@ -841,6 +885,10 @@ function commitAndUpdateView() {
         canonicals[3] = toCanonical12(words, 3);
         canonicals[4] = toCanonical12(words, 4);
         words = fromCanonical12(canonicals[subdivisionMode], subdivisionMode); // Ensure words matches the default view
+
+        // NEW: reset chant arrays so they initialize from this new song
+        chantActiveBySubdivision = { 2: [], 3: [], 4: [] };
+
         updateSubdivisionButtonVisual();
         render();
     }
@@ -858,6 +906,13 @@ function commitAndUpdateView() {
 
   function setMode(isChant) {
     chantModeActive = isChant;
+
+    // NEW: ensure chant state is ready when switching into Chant mode
+    if (chantModeActive) {
+      ensureChantArrayInitializedForCurrentView();
+      ensureChantArrayLengthForCurrentView(words.length);
+    }
+
     poetryModeBtn.classList.toggle('active', !isChant);
     chantModeBtn.classList.toggle('active', isChant);
     lyricsDropdown.classList.toggle('hidden', isChant);
@@ -931,6 +986,9 @@ function commitAndUpdateView() {
 
     // Derive new words view from canonical
     words = fromCanonical12(canonicals[subdivisionMode], subdivisionMode);
+
+    // NEW: reset chant arrays on major timebase switches
+    chantActiveBySubdivision = { 2: [], 3: [], 4: [] };
 
     timeSignatureTopBtn.textContent = timeSignatureNumerator;
     timeSignatureBottomBtn.textContent = timeSignatureDenominator;
@@ -1204,6 +1262,10 @@ function commitAndUpdateView() {
 
     // After processing all sections, update the main view to reflect the current mode
     words = fromCanonical12(canonicals[subdivisionMode], subdivisionMode);
+
+    // NEW: reset chant arrays to initialize fresh from imported content
+    chantActiveBySubdivision = { 2: [], 3: [], 4: [] };
+
     updateSubdivisionButtonVisual();
     render();
     closeModal();
@@ -1238,6 +1300,13 @@ function commitAndUpdateView() {
     const newMode = (subdivisionMode === 2) ? 4 : 2;
     subdivisionMode = newMode;
     words = fromCanonical12(canonicals[newMode], newMode);
+
+    // NEW: make sure chant states are present for the new view
+    if (!chantActiveBySubdivision[newMode] || chantActiveBySubdivision[newMode].length === 0) {
+      chantActiveBySubdivision[newMode] = deriveActiveStatesFromWords(words);
+    } else {
+      ensureChantArrayLengthForCurrentView(words.length);
+    }
     
     updateSubdivisionButtonVisual();
     render();
@@ -1439,12 +1508,20 @@ function commitAndUpdateView() {
             circle.classList.add('active');
         }
         circle.addEventListener('click', () => {
+            // NEW: Chant mode click toggles only this circle; nothing else is affected.
+            if (chantModeActive) {
+              ensureChantArrayInitializedForCurrentView();
+              ensureChantArrayLengthForCurrentView(Math.max(idx + 1, displayWords.length));
+              chantActiveBySubdivision[subdivisionMode][idx] = !chantActiveBySubdivision[subdivisionMode][idx];
+              render();
+              return;
+            }
+
+            // Existing Lyric mode behavior (unchanged)
             // Proactively dismantle any syncopation that would be broken by this action.
-            // A syncopation is broken if a word is added/removed right before it.
             for (let i = syncopation.length - 1; i >= 0; i--) {
                 const syncTriggerPos = syncopation[i];
                 const syncStartIndex = syncTriggerPos - 1;
-                // If the click is right before a syncopation group, dismantle it first.
                 if (idx === syncStartIndex -1 || idx === syncStartIndex) {
                     dismantleSyncopation(syncStartIndex);
                 }
@@ -1454,9 +1531,8 @@ function commitAndUpdateView() {
                 words.push('-');
             }
 
-            // If the user clicks the green syncopation trigger, undo it.
             if (syncopation.includes(idx)) {
-                dismantleSyncopation(idx - 1); // We need to pass the start index
+                dismantleSyncopation(idx - 1);
                 commitAndUpdateView();
                 return;
             }
@@ -1531,8 +1607,10 @@ function commitAndUpdateView() {
         const i = beatStartPosition;
         const active1 = isPositionActive(i, displayWords);
         const active2 = isPositionActive(i + 1, displayWords);
-        const isSyncopated = syncopation.includes(i + 1);
-        const syncopationType = getSyncopationType(i);
+
+        // NEW: ignore syncopation visuals in chant mode
+        const isSyncopated = !chantModeActive && syncopation.includes(i + 1);
+        const syncopationType = chantModeActive ? null : getSyncopationType(i);
 
         if (syncopationType === 'SyncopateB') notesBox.appendChild(createImage('https://visualmusicalminds.github.io/images/Wordrhythms-SyncopateB.svg'));
         else if (syncopationType === 'SyncopateC') notesBox.appendChild(createImage('https://visualmusicalminds.github.io/images/Wordrhythms-SyncopateC.svg'));
@@ -1813,6 +1891,12 @@ function commitAndUpdateView() {
             displayWords.push('-');
         }
     }
+
+    // NEW: keep chant array aligned with the displayed view length
+    if (chantModeActive) {
+      ensureChantArrayInitializedForCurrentView();
+      ensureChantArrayLengthForCurrentView(displayWords.length);
+    }
     
     const allBeatGroups = [];
     for (let i = 0; i < displayWords.length; i += config.circlesPerBeat) {
@@ -1909,6 +1993,10 @@ function commitAndUpdateView() {
   canonicals[3] = toCanonical12(words, 3);
   canonicals[4] = toCanonical12(words, 4);
   words = fromCanonical12(canonicals[subdivisionMode], subdivisionMode);
+
+  // NEW: prepare chant arrays on load (they'll finalize when Chant mode is activated)
+  chantActiveBySubdivision = { 2: [], 3: [], 4: [] };
+
   updateSubdivisionButtonVisual();
 
   render();
