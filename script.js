@@ -1107,14 +1107,21 @@ function commitAndUpdateView() {
   }
 
 
-  function openModal() {
-      // Set default state and generate initial text
-      save8thBtn.classList.add('active');
-      save16thBtn.classList.remove('active');
-      saveTripletBtn.classList.remove('active');
-      generateSaveText();
-      modal.style.display = 'flex';
-  }
+function openModal() {
+  // Determine current section type (2: 8th, 4: 16th, 3: triplet)
+  const currentSectionType = (timeSignatureDenominator === 8) ? 3 : subdivisionMode;
+
+  // Activate only the current section tab on open
+  save8thBtn.classList.toggle('active', currentSectionType === 2);
+  save16thBtn.classList.toggle('active', currentSectionType === 4);
+  saveTripletBtn.classList.toggle('active', currentSectionType === 3);
+
+  // Generate text only for the active tab(s)
+  generateSaveText();
+
+  // Show modal
+  modal.style.display = 'flex';
+}
 
   function closeModal() {
       modal.style.display = 'none';
@@ -1178,98 +1185,100 @@ function commitAndUpdateView() {
       }, 1000);
   });
   
-  modalSubmitBtn.addEventListener('click', () => {
-    const text = multiLineInput.value;
-    if (!text) {
-        closeModal();
-        return;
-    }
-
-    savedTextInput = text;
-
-    // Split the text into sections based on the header lines
-    const sections = text.split(/(?=\[BPM:)/).filter(s => s.trim());
-
-    if (textImportMode === 'replace') {
-        // Clear existing canonicals if we are replacing
-        canonicals = { 2: [], 3: [], 4: [] };
-        words = [];
-        syncopation = [];
-        syncopationStates = {};
-    }
-
-    sections.forEach(sectionText => {
-        const lines = sectionText.trim().split('\n');
-        const header = lines[0];
-        let contentText = lines.slice(1).join('\n');
-
-        if (!header.startsWith('[') || !header.endsWith(']')) return; // Skip invalid sections
-
-        const settingsStr = header.slice(1, -1);
-        let sectionType = 0;
-
-        // Determine the section type (subdivision)
-        const sectionMatch = settingsStr.match(/Section: (8th Notes|16th Notes|Triplet)/);
-        if (sectionMatch) {
-            switch (sectionMatch[1]) {
-                case '8th Notes': sectionType = 2; break;
-                case '16th Notes': sectionType = 4; break;
-                case 'Triplet': sectionType = 3; break;
-            }
-        }
-
-        if (sectionType === 0) return; // Skip if we can't identify the section
-
-        // Parse BPM and Time Signature from the header
-        // Note: This will apply the settings from the *last* parsed section globally.
-        const bpmMatch = settingsStr.match(/BPM:(\d+)/);
-        if (bpmMatch && bpmMatch[1]) {
-            let newBPM = parseInt(bpmMatch[1], 10);
-            if (!isNaN(newBPM) && newBPM > 20 && newBPM <= 600) {
-                BPM = newBPM;
-                bpmValueSpan.textContent = BPM;
-            }
-        }
-
-        const tsMatch = settingsStr.match(/Time Signature: (\d+)\/(\d+)/);
-        if (tsMatch && tsMatch[1] && tsMatch[2]) {
-            const newNumerator = parseInt(tsMatch[1], 10);
-            const newDenominator = parseInt(tsMatch[2], 10);
-            // We only update the global time signature if it matches the expected for the section
-            if ((sectionType === 3 && newDenominator === 8) || (sectionType !== 3 && newDenominator === 4)) {
-                timeSignatureNumerator = newNumerator;
-                timeSignatureDenominator = newDenominator;
-                timeSignatureTopBtn.textContent = newNumerator;
-                timeSignatureBottomBtn.textContent = newDenominator;
-                timeSignatureButton.classList.toggle('compound', newDenominator === 8);
-            }
-        }
-
-        // Parse words from the content
-        if (contentText.includes('|')) {
-            hasPickupMeasure = true; // This will be a global setting based on the last parsed section with a pickup
-            contentText = contentText.replace(/\|/g, '');
-        } else {
-            hasPickupMeasure = false;
-        }
-
-        const sectionWords = contentText.trim().split(/\s+/).map(token => token === '\\' ? '-' : token);
-        
-        // Update the specific canonical model for this section
-        // We are assuming no syncopation in this simplified import for now.
-        canonicals[sectionType] = toCanonical12(sectionWords, sectionType);
-    });
-
-    // After processing all sections, update the main view to reflect the current mode
-    words = fromCanonical12(canonicals[subdivisionMode], subdivisionMode);
-
-    // NEW: reset chant arrays to initialize fresh from imported content
-    chantActiveBySubdivision = { 2: [], 3: [], 4: [] };
-
-    updateSubdivisionButtonVisual();
-    render();
+modalSubmitBtn.addEventListener('click', () => {
+  const text = multiLineInput.value;
+  if (!text) {
     closeModal();
+    return;
+  }
+
+  savedTextInput = text;
+
+  // Split the text into sections based on the header lines
+  const sections = text.split(/(?=\[BPM:)/).filter(s => s.trim());
+
+  // IMPORTANT: Do NOT clear canonicals globally in 'replace' mode anymore.
+  // We will only update the specific sections the user included.
+  // if (textImportMode === 'replace') {
+  //   canonicals = { 2: [], 3: [], 4: [] };
+  //   words = [];
+  //   syncopation = [];
+  //   syncopationStates = {};
+  // }
+
+  const updatedSections = new Set();
+
+  sections.forEach(sectionText => {
+    const lines = sectionText.trim().split('\n');
+    const header = lines[0];
+    let contentText = lines.slice(1).join('\n');
+
+    if (!header.startsWith('[') || !header.endsWith(']')) return; // Skip invalid sections
+
+    const settingsStr = header.slice(1, -1);
+    let sectionType = 0;
+
+    // Determine the section type (subdivision)
+    const sectionMatch = settingsStr.match(/Section: (8th Notes|16th Notes|Triplet)/);
+    if (sectionMatch) {
+      switch (sectionMatch[1]) {
+        case '8th Notes': sectionType = 2; break;
+        case '16th Notes': sectionType = 4; break;
+        case 'Triplet': sectionType = 3; break;
+      }
+    }
+
+    if (sectionType === 0) return; // Skip if we can't identify the section
+
+    // Parse BPM and Time Signature from the header (apply last parsed section globally)
+    const bpmMatch = settingsStr.match(/BPM:(\d+)/);
+    if (bpmMatch && bpmMatch[1]) {
+      let newBPM = parseInt(bpmMatch[1], 10);
+      if (!isNaN(newBPM) && newBPM > 20 && newBPM <= 600) {
+        BPM = newBPM;
+        bpmValueSpan.textContent = BPM;
+      }
+    }
+
+    const tsMatch = settingsStr.match(/Time Signature: (\d+)\/(\d+)/);
+    if (tsMatch && tsMatch[1] && tsMatch[2]) {
+      const newNumerator = parseInt(tsMatch[1], 10);
+      const newDenominator = parseInt(tsMatch[2], 10);
+      // Only update global TS if it matches expected for the section
+      if ((sectionType === 3 && newDenominator === 8) || (sectionType !== 3 && newDenominator === 4)) {
+        timeSignatureNumerator = newNumerator;
+        timeSignatureDenominator = newDenominator;
+        timeSignatureTopBtn.textContent = newNumerator;
+        timeSignatureBottomBtn.textContent = newDenominator;
+        timeSignatureButton.classList.toggle('compound', newDenominator === 8);
+      }
+    }
+
+    // Parse words from the content
+    if (contentText.includes('|')) {
+      hasPickupMeasure = true; // Global; last parsed section wins
+      contentText = contentText.replace(/\|/g, '');
+    } else {
+      hasPickupMeasure = false;
+    }
+
+    const sectionWords = contentText.trim().split(/\s+/).map(token => token === '\\' ? '-' : token);
+
+    // UPDATE ONLY THE SPECIFIC CANONICAL; do not touch others
+    canonicals[sectionType] = toCanonical12(sectionWords, sectionType);
+    updatedSections.add(sectionType);
   });
+
+  // After processing all sections, update the main view to reflect the current mode
+  words = fromCanonical12(canonicals[subdivisionMode], subdivisionMode);
+
+  // Reset chant arrays to initialize fresh from imported content
+  chantActiveBySubdivision = { 2: [], 3: [], 4: [] };
+
+  updateSubdivisionButtonVisual();
+  render();
+  closeModal();
+});
 
   // Subdivision Cycle Button
   const sixteenthNoteBtn = document.getElementById('sixteenth-note-btn'); // reuse same element
