@@ -413,7 +413,7 @@
   function applyIsolatedRhythmChange(position) {
     if (syncopation.length > 0) return false; // Avoid breaking stored syncopation indices
 
-    const tokens = extractActiveTokens(words);
+    let tokens = extractActiveTokens(words);
     const activeStates = words.map(word => word !== '-' && word !== '');
 
     if (!activeStates[position] && tokens.length === 0 && position >= words.length) {
@@ -422,13 +422,29 @@
     }
 
     const wasActive = activeStates[position] || false;
-    const trailingRestCount = countTrailingRests(words);
+    const initialActiveCount = activeStates.reduce((sum, state) => sum + (state ? 1 : 0), 0);
 
+    // This is the special case: the user is deactivating a note, and all lyrics were already assigned.
+    // In this case, we want to remove the lyric associated with this note.
+    if (wasActive && initialActiveCount >= tokens.length) {
+      let activeCountUpToPosition = 0;
+      for (let i = 0; i < position; i++) {
+        if (activeStates[i]) {
+          activeCountUpToPosition++;
+        }
+      }
+      // Remove the specific token that corresponds to the deactivated note.
+      if (activeCountUpToPosition < tokens.length) {
+        tokens.splice(activeCountUpToPosition, 1);
+      }
+    }
+    
     activeStates[position] = !wasActive;
 
-    let activeCount = activeStates.reduce((sum, state) => sum + (state ? 1 : 0), 0);
-    if (activeCount < tokens.length) {
-      const needed = tokens.length - activeCount;
+    const trailingRestCount = countTrailingRests(words);
+    let finalActiveCount = activeStates.reduce((sum, state) => sum + (state ? 1 : 0), 0);
+    if (finalActiveCount < tokens.length) {
+      const needed = tokens.length - finalActiveCount;
       let insertPos = Math.max(position + 1, activeStates.length - trailingRestCount);
       for (let i = 0; i < needed; i++) {
         activeStates.splice(insertPos, 0, true);
