@@ -170,7 +170,6 @@
   let savedTextInput = ''; // Store the text from the modal
   let chantModeActive = false;
   let currentRhythmSystem = 'Simplified Kodály';
-  let lastDeactivated = { lyric: null, position: -1 }; // For soft-deleting lyrics
 
   // Audio context for generating sounds
   let audioContext = null;
@@ -412,53 +411,29 @@
 
   // Toggle a rhythm position while preserving the surrounding beat patterns
   function applyIsolatedRhythmChange(position) {
-    if (syncopation.length > 0) return false;
-
-    // If the user clicks a different position, reset the "undo" state.
-    if (lastDeactivated.position !== -1 && lastDeactivated.position !== position) {
-        lastDeactivated = { lyric: null, position: -1 };
-    }
+    if (syncopation.length > 0) return false; // Avoid breaking stored syncopation indices
 
     const tokens = extractActiveTokens(words);
     const activeStates = words.map(word => word !== '-' && word !== '');
-    const wasActive = activeStates[position];
-    const initialActiveCount = activeStates.reduce((sum, state) => sum + (state ? 1 : 0), 0);
 
-    // Case 1: "Undo" a deactivation by clicking the same note again.
-    if (!wasActive && lastDeactivated.position === position) {
-        words[position] = lastDeactivated.lyric;
-        lastDeactivated = { lyric: null, position: -1 }; // Clear the undo state
-        return true;
-    }
-    
-    // Case 2: Deactivate a note when all lyrics are accounted for.
-    if (wasActive && initialActiveCount >= tokens.length) {
-        // Store the lyric and position for a potential "undo".
-        lastDeactivated = { lyric: words[position], position: position };
-        words[position] = '-'; // Just set to a rest, don't rebuild.
-        return true;
+    if (!activeStates[position] && tokens.length === 0 && position >= words.length) {
+      // Nothing to shift yet – fall back to legacy behaviour
+      return false;
     }
 
-    // Case 3: Default behavior for all other scenarios (activating a new note, etc.).
-    // This is the original, robust logic.
-    lastDeactivated = { lyric: null, position: -1 }; // Clear any pending undo.
-    
+    const wasActive = activeStates[position] || false;
+    const trailingRestCount = countTrailingRests(words);
+
     activeStates[position] = !wasActive;
 
-    // If activating a new note, we might need a placeholder token.
-    if (!wasActive && activeStates.reduce((sum, state) => sum + (state ? 1 : 0), 0) > tokens.length) {
-        tokens.push(' ');
-    }
-
-    const trailingRestCount = countTrailingRests(words);
     let activeCount = activeStates.reduce((sum, state) => sum + (state ? 1 : 0), 0);
     if (activeCount < tokens.length) {
-        const needed = tokens.length - activeCount;
-        let insertPos = Math.max(position + 1, activeStates.length - trailingRestCount);
-        for (let i = 0; i < needed; i++) {
-            activeStates.splice(insertPos, 0, true);
-            insertPos++;
-        }
+      const needed = tokens.length - activeCount;
+      let insertPos = Math.max(position + 1, activeStates.length - trailingRestCount);
+      for (let i = 0; i < needed; i++) {
+        activeStates.splice(insertPos, 0, true);
+        insertPos++;
+      }
     }
 
     words = rebuildWordsFromActiveStates(tokens, activeStates);
