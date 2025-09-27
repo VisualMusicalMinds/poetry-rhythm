@@ -163,8 +163,8 @@
   let currentPlayPosition = 0;
   let selectedPlayStartPosition = null; // To store the selected starting beat
   let notesBoxElements = []; // Store references to notes boxes for highlighting
-  let beatEnabled = true; // Beat checkbox state
-  let rhythmEnabled = true; // Rhythm checkbox state
+  let beatEnabled = true; // Beat toggle state
+  let rhythmEnabled = true; // Rhythm toggle state
   let BPM = 82;
   let textImportMode = 'replace'; // 'add' or 'replace'
   let savedTextInput = ''; // Store the text from the modal
@@ -1045,11 +1045,27 @@ function commitAndUpdateView() {
     if (isPlaying) stopPlayback(); else startPlayback();
   });
 
-  // Checkbox handlers
-  const beatCheckbox = document.getElementById('beat-checkbox');
-  const rhythmCheckbox = document.getElementById('rhythm-checkbox');
-  beatCheckbox.addEventListener('change', (e) => { beatEnabled = e.target.checked; });
-  rhythmCheckbox.addEventListener('change', (e) => { rhythmEnabled = e.target.checked; });
+  // Sound Toggle Buttons
+  const beatToggle = document.getElementById('beat-toggle');
+  const rhythmToggle = document.getElementById('rhythm-toggle');
+  const introToggle = document.getElementById('intro-toggle');
+  // const pitchToggle = document.getElementById('pitch-toggle'); // Not used yet
+
+  beatToggle.addEventListener('click', () => {
+    beatEnabled = !beatEnabled;
+    beatToggle.classList.toggle('active', beatEnabled);
+  });
+
+  rhythmToggle.addEventListener('click', () => {
+    rhythmEnabled = !rhythmEnabled;
+    rhythmToggle.classList.toggle('active', rhythmEnabled);
+  });
+
+  introToggle.addEventListener('click', () => {
+    // Future functionality for 'Intro' can be added here.
+    // For now, it can just toggle its visual state.
+    introToggle.classList.toggle('active');
+  });
 
   // Copy Visual button
   const copyVisualBtn = document.getElementById('copy-visual-btn');
