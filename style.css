@@ -360,6 +360,16 @@ body { margin: 0; padding: 0; }
   background-color: #ffc107; /* Yellow */
 }
 
+#pitch-toggle.pitch {
+  background-color: #28a745; /* Green */
+  color: white;
+}
+
+#pitch-toggle.drum {
+  background-color: #d6b4fc; /* Light Purple */
+  color: white;
+}
+
 /* Modal Styles */
 .modal-backdrop {
     display: none; /* Hidden by default */
