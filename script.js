@@ -165,6 +165,7 @@
   let notesBoxElements = []; // Store references to notes boxes for highlighting
   let beatEnabled = true; // Beat toggle state
   let rhythmEnabled = true; // Rhythm toggle state
+  let introEnabled = true; // Intro count-in state
   let BPM = 82;
   let textImportMode = 'replace'; // 'add' or 'replace'
   let savedTextInput = ''; // Store the text from the modal
@@ -1062,9 +1063,8 @@ function commitAndUpdateView() {
   });
 
   introToggle.addEventListener('click', () => {
-    // Future functionality for 'Intro' can be added here.
-    // For now, it can just toggle its visual state.
-    introToggle.classList.toggle('active');
+    introEnabled = !introEnabled;
+    introToggle.classList.toggle('active', introEnabled);
   });
 
   // Copy Visual button
@@ -1405,8 +1405,8 @@ modalSubmitBtn.addEventListener('click', () => {
       playTimeouts.push(loopTimeout);
     };
 
-    // Play the count-in if it's the first play and beat is enabled
-    const shouldPlayCountIn = (isFirstPlay || selectedPlayStartPosition !== null) && beatEnabled;
+    // Play the count-in if intro is enabled, and it's the first play or starting from a selection
+    const shouldPlayCountIn = introEnabled && (isFirstPlay || selectedPlayStartPosition !== null);
 
     if (shouldPlayCountIn) {
       let countInBeats = 4;
@@ -1427,7 +1427,7 @@ modalSubmitBtn.addEventListener('click', () => {
       // Start the actual poetry after the count-in
       startPoetry(countInBeats * beatInterval, currentPlayPosition);
     } else {
-      // If it's not the first play or beat is disabled, start immediately
+      // Otherwise, start immediately
       startPoetry(0, currentPlayPosition);
     }
   }
