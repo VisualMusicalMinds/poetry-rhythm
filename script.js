@@ -558,23 +558,43 @@ function applyIsolatedRhythmChange(position) {
   function playBassDrum() {
     if (!rhythmEnabled) return;
     const ctx = initAudioContext();
-    const oscillator = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-    oscillator.type = 'sine';
-    
-    // Pitch envelope for the "kick" sound
-    oscillator.frequency.setValueAtTime(150, ctx.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-    
-    // Volume envelope
-    gainNode.gain.setValueAtTime(1, ctx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(ctx.destination);
-    
-    oscillator.start();
-    oscillator.stop(ctx.currentTime + 0.5);
+    const time = ctx.currentTime;
+
+    // Main oscillator for the "body" of the kick
+    const bodyOsc = ctx.createOscillator();
+    bodyOsc.type = 'sine';
+    bodyOsc.frequency.setValueAtTime(120, time);
+    bodyOsc.frequency.exponentialRampToValueAtTime(50, time + 0.2);
+
+    // Second oscillator for the "attack" or "beater" sound
+    const attackOsc = ctx.createOscillator();
+    attackOsc.type = 'triangle';
+    attackOsc.frequency.setValueAtTime(800, time);
+    attackOsc.frequency.exponentialRampToValueAtTime(50, time + 0.1);
+
+    // Gain node for the attack to give it a sharp decay
+    const attackGain = ctx.createGain();
+    attackGain.gain.setValueAtTime(0.8, time);
+    attackGain.gain.exponentialRampToValueAtTime(0.01, time + 0.08);
+
+    // Main gain node to shape the overall sound and prevent clicks
+    const mainGain = ctx.createGain();
+    mainGain.gain.setValueAtTime(0, time);
+    mainGain.gain.linearRampToValueAtTime(1, time + 0.01); // Quick ramp up
+    mainGain.gain.exponentialRampToValueAtTime(0.1, time + 0.3); // Body decay
+    mainGain.gain.linearRampToValueAtTime(0, time + 0.4); // Smooth ramp to 0 to avoid click
+
+    // Connect the nodes
+    bodyOsc.connect(mainGain);
+    attackOsc.connect(attackGain);
+    attackGain.connect(mainGain);
+    mainGain.connect(ctx.destination);
+
+    // Start and stop the oscillators
+    bodyOsc.start(time);
+    attackOsc.start(time);
+    bodyOsc.stop(time + 0.4);
+    attackOsc.stop(time + 0.4);
   }
 
   // Play triangle wave tone at A2 (110 Hz)
