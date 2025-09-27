@@ -390,55 +390,93 @@
 
   // Rebuild the words array so that the supplied active states receive tokens in order
   function rebuildWordsFromActiveStates(tokens, activeStates) {
-    const rebuilt = [];
-    let tokenIndex = 0;
+  const rebuilt = [];
+  let tokenIndex = 0;
 
-    for (let i = 0; i < activeStates.length; i++) {
-      if (activeStates[i]) {
-        if (tokenIndex < tokens.length) rebuilt.push(tokens[tokenIndex++]);
-        else rebuilt.push(' ');
-      } else {
-        rebuilt.push('-');
-      }
+  for (let i = 0; i < activeStates.length; i++) {
+    if (activeStates[i]) {
+      if (tokenIndex < tokens.length) rebuilt.push(tokens[tokenIndex++]);
+      else rebuilt.push('-'); // Never create a "placeholder" active slot
+    } else {
+      rebuilt.push('-');
     }
-
-    while (tokenIndex < tokens.length) {
-      rebuilt.push(tokens[tokenIndex++]);
-    }
-
-    return rebuilt;
   }
 
-  // Toggle a rhythm position while preserving the surrounding beat patterns
-  function applyIsolatedRhythmChange(position) {
-    if (syncopation.length > 0) return false; // Avoid breaking stored syncopation indices
+  // If there are any remaining tokens (rare here), append them
+  while (tokenIndex < tokens.length) {
+    rebuilt.push(tokens[tokenIndex++]);
+  }
 
-    const tokens = extractActiveTokens(words);
-    const activeStates = words.map(word => word !== '-' && word !== '');
+  return rebuilt;
+}
 
-    if (!activeStates[position] && tokens.length === 0 && position >= words.length) {
-      // Nothing to shift yet – fall back to legacy behaviour
-      return false;
+// Helper to trim any excess trailing rests while preserving the original tail
+function trimActiveStatesTail(activeStates, keepTrailingRests) {
+  let trailing = 0;
+  for (let i = activeStates.length - 1; i >= 0; i--) {
+    if (!activeStates[i]) trailing++;
+    else break;
+  }
+  const excess = trailing - keepTrailingRests;
+  if (excess > 0) {
+    activeStates.splice(activeStates.length - excess, excess);
+  }
+}
+
+// Replace the existing applyIsolatedRhythmChange with this version
+function applyIsolatedRhythmChange(position) {
+  if (syncopation.length > 0) return false; // Avoid breaking stored syncopation indices
+
+  const tokens = extractActiveTokens(words);
+  const activeStates = words.map(word => word !== '-' && word !== '');
+  const originalTrailingRests = countTrailingRests(words);
+
+  if (!activeStates[position] && tokens.length === 0 && position >= words.length) {
+    // Nothing to shift yet – fall back to legacy behaviour
+    return false;
+  }
+
+  const wasActive = activeStates[position] || false;
+  activeStates[position] = !wasActive;
+
+  const tokensLen = tokens.length;
+  let activeCount = activeStates.reduce((sum, state) => sum + (state ? 1 : 0), 0);
+
+  if (activeCount < tokensLen) {
+    // Need extra active slots to place all tokens; insert them just before trailing rests
+    const needed = tokensLen - activeCount;
+    let insertPos = Math.max(position + 1, activeStates.length - originalTrailingRests);
+    for (let i = 0; i < needed; i++) {
+      activeStates.splice(insertPos, 0, true);
+      insertPos++;
     }
-
-    const wasActive = activeStates[position] || false;
-    const trailingRestCount = countTrailingRests(words);
-
-    activeStates[position] = !wasActive;
-
-    let activeCount = activeStates.reduce((sum, state) => sum + (state ? 1 : 0), 0);
-    if (activeCount < tokens.length) {
-      const needed = tokens.length - activeCount;
-      let insertPos = Math.max(position + 1, activeStates.length - trailingRestCount);
-      for (let i = 0; i < needed; i++) {
-        activeStates.splice(insertPos, 0, true);
-        insertPos++;
+  } else if (activeCount > tokensLen) {
+    // We have more active slots than tokens. Turn off one later slot (prefer the rightmost one before trailing rests).
+    let cutoff = Math.max(0, activeStates.length - originalTrailingRests - 1);
+    let turnedOff = false;
+    for (let i = cutoff; i >= 0; i--) {
+      if (i !== position && activeStates[i]) {
+        activeStates[i] = false;
+        turnedOff = true;
+        break;
       }
     }
-
-    words = rebuildWordsFromActiveStates(tokens, activeStates);
-    return true;
+    if (!turnedOff) {
+      // Fallback: if everything else failed, turn off any earlier true
+      for (let i = cutoff; i >= 0; i--) {
+        if (activeStates[i]) {
+          activeStates[i] = false;
+          break;
+        }
+      }
+    }
+    // Ensure we don't keep new, unnecessary trailing rests (shrink back to original tail)
+    trimActiveStatesTail(activeStates, originalTrailingRests);
   }
+
+  words = rebuildWordsFromActiveStates(tokens, activeStates);
+  return true;
+}
 
   // Check if a position should be considered active (for rhythm and display)
   function isPositionActive(position, wordArray) {
@@ -656,14 +694,23 @@ function synchronizeLyrics() {
     }
 }
 
-function commitAndUpdateView() {
-    canonicals[subdivisionMode] = mergeViewIntoCanonical(canonicals[subdivisionMode], words, subdivisionMode);
-    
-    // Sync lyrics to other canonicals
-    synchronizeLyrics();
+// Add this small sanitizer and call it in commitAndUpdateView to prevent phantom actives
+function sanitizeWordsArray(arr) {
+  return arr.map(w => (w === ' ' || w === '' ? '-' : w));
+}
 
-    words = fromCanonical12(canonicals[subdivisionMode], subdivisionMode);
-    render();
+// Update commitAndUpdateView to sanitize words before merging
+function commitAndUpdateView() {
+  // Remove any accidental placeholders so canonical never grows from "active spaces"
+  words = sanitizeWordsArray(words);
+
+  canonicals[subdivisionMode] = mergeViewIntoCanonical(canonicals[subdivisionMode], words, subdivisionMode);
+  
+  // Sync lyrics to other canonicals
+  synchronizeLyrics();
+
+  words = fromCanonical12(canonicals[subdivisionMode], subdivisionMode);
+  render();
 }
 
   function createImage(url) {
