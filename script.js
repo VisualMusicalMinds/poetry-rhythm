@@ -171,6 +171,7 @@
   let savedTextInput = ''; // Store the text from the modal
   let chantModeActive = false;
   let currentRhythmSystem = 'Simplified Kodály';
+  let pitchMode = 'pitch'; // 'pitch' or 'drum'
 
   // NEW: independent chant mode active states per subdivision (2,3,4)
   let chantActiveBySubdivision = { 2: [], 3: [], 4: [] };
@@ -551,6 +552,29 @@ function applyIsolatedRhythmChange(position) {
     gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
     source.start();
     source.stop(ctx.currentTime + 0.1);
+  }
+
+  // Create a bass drum sound
+  function playBassDrum() {
+    if (!rhythmEnabled) return;
+    const ctx = initAudioContext();
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    oscillator.type = 'sine';
+    
+    // Pitch envelope for the "kick" sound
+    oscillator.frequency.setValueAtTime(150, ctx.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+    
+    // Volume envelope
+    gainNode.gain.setValueAtTime(1, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    oscillator.start();
+    oscillator.stop(ctx.currentTime + 0.5);
   }
 
   // Play triangle wave tone at A2 (110 Hz)
@@ -1050,7 +1074,7 @@ function commitAndUpdateView() {
   const beatToggle = document.getElementById('beat-toggle');
   const rhythmToggle = document.getElementById('rhythm-toggle');
   const introToggle = document.getElementById('intro-toggle');
-  // const pitchToggle = document.getElementById('pitch-toggle'); // Not used yet
+  const pitchToggle = document.getElementById('pitch-toggle');
 
   beatToggle.addEventListener('click', () => {
     beatEnabled = !beatEnabled;
@@ -1066,6 +1090,23 @@ function commitAndUpdateView() {
     introEnabled = !introEnabled;
     introToggle.classList.toggle('active', introEnabled);
   });
+
+  pitchToggle.addEventListener('click', () => {
+    if (pitchMode === 'pitch') {
+        pitchMode = 'drum';
+        pitchToggle.textContent = 'Drum';
+        pitchToggle.classList.remove('pitch');
+        pitchToggle.classList.add('drum');
+    } else {
+        pitchMode = 'pitch';
+        pitchToggle.textContent = 'Pitch';
+        pitchToggle.classList.remove('drum');
+        pitchToggle.classList.add('pitch');
+    }
+  });
+  
+  // Initialize pitch toggle state
+  pitchToggle.classList.add('pitch');
 
   // Copy Visual button
   const copyVisualBtn = document.getElementById('copy-visual-btn');
@@ -1390,7 +1431,13 @@ modalSubmitBtn.addEventListener('click', () => {
       rhythmPattern.slice(startCircle).forEach((hasSound, index) => {
         const timeDelay = delay + (index * noteInterval);
         const rhythmTimeout = setTimeout(() => {
-          if (isPlaying && hasSound) playTriangleTone(noteInterval * 0.8 / 1000);
+          if (isPlaying && hasSound) {
+            if (pitchMode === 'pitch') {
+              playTriangleTone(noteInterval * 0.8 / 1000);
+            } else {
+              playBassDrum();
+            }
+          }
         }, timeDelay);
         playTimeouts.push(rhythmTimeout);
       });
