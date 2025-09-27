@@ -411,48 +411,69 @@
 
   // Toggle a rhythm position while preserving the surrounding beat patterns
   function applyIsolatedRhythmChange(position) {
-    if (syncopation.length > 0) return false; // Avoid breaking stored syncopation indices
+    if (syncopation.length > 0) return false;
 
-    let tokens = extractActiveTokens(words);
+    const tokens = extractActiveTokens(words);
     const activeStates = words.map(word => word !== '-' && word !== '');
-
-    if (!activeStates[position] && tokens.length === 0 && position >= words.length) {
-      // Nothing to shift yet – fall back to legacy behaviour
-      return false;
-    }
-
-    const wasActive = activeStates[position] || false;
+    const wasActive = activeStates[position];
     const initialActiveCount = activeStates.reduce((sum, state) => sum + (state ? 1 : 0), 0);
-
-    // This is the special case: the user is deactivating a note, and all lyrics were already assigned.
-    // In this case, we want to remove the lyric associated with this note.
-    if (wasActive && initialActiveCount >= tokens.length) {
-      let activeCountUpToPosition = 0;
-      for (let i = 0; i < position; i++) {
-        if (activeStates[i]) {
-          activeCountUpToPosition++;
-        }
-      }
-      // Remove the specific token that corresponds to the deactivated note.
-      if (activeCountUpToPosition < tokens.length) {
-        tokens.splice(activeCountUpToPosition, 1);
-      }
-    }
     
-    activeStates[position] = !wasActive;
+    // If we are deactivating a note, AND all lyrics already have a note...
+    if (wasActive && initialActiveCount >= tokens.length) {
+        // ...then we perform the special "combine" logic.
+        const lyricToMove = words[position];
 
-    const trailingRestCount = countTrailingRests(words);
-    let finalActiveCount = activeStates.reduce((sum, state) => sum + (state ? 1 : 0), 0);
-    if (finalActiveCount < tokens.length) {
-      const needed = tokens.length - finalActiveCount;
-      let insertPos = Math.max(position + 1, activeStates.length - trailingRestCount);
-      for (let i = 0; i < needed; i++) {
-        activeStates.splice(insertPos, 0, true);
-        insertPos++;
-      }
+        // Find the previous active note's index.
+        let previousActiveIndex = -1;
+        for (let i = position - 1; i >= 0; i--) {
+            if (activeStates[i]) {
+                previousActiveIndex = i;
+                break;
+            }
+        }
+
+        if (previousActiveIndex !== -1) {
+            words[previousActiveIndex] += lyricToMove;
+            words[position] = '-';
+        } else {
+            // No previous note. Find the *next* active note.
+            let nextActiveIndex = -1;
+            for (let i = position + 1; i < words.length; i++) {
+                if(activeStates[i]) {
+                    nextActiveIndex = i;
+                    break;
+                }
+            }
+            if (nextActiveIndex !== -1) {
+                // Prepend to the next note's lyric.
+                words[nextActiveIndex] = lyricToMove + words[nextActiveIndex];
+                words[position] = '-';
+            } else {
+                // It's the only note. Just make it a rest.
+                words[position] = '-';
+            }
+        }
+    } else {
+        // For all other cases (activating a note, or deactivating with spare lyrics),
+        // use the original logic which rebuilds the whole array.
+        activeStates[position] = !wasActive;
+        const trailingRestCount = countTrailingRests(words);
+        let activeCount = activeStates.reduce((sum, state) => sum + (state ? 1 : 0), 0);
+        
+        if (!wasActive && activeCount > tokens.length) {
+            tokens.push(' ');
+        }
+
+        if (activeCount < tokens.length) {
+            const needed = tokens.length - activeCount;
+            let insertPos = Math.max(position + 1, activeStates.length - trailingRestCount);
+            for (let i = 0; i < needed; i++) {
+                activeStates.splice(insertPos, 0, true);
+                insertPos++;
+            }
+        }
+        words = rebuildWordsFromActiveStates(tokens, activeStates);
     }
-
-    words = rebuildWordsFromActiveStates(tokens, activeStates);
     return true;
   }
 
