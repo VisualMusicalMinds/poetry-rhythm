@@ -24,26 +24,27 @@ body { margin: 0; padding: 0; }
 .word.rest { color: #d3d3d3; }
 .word-input { font-size: 1em; width: auto; padding: 2px 4px; box-sizing: border-box; border-color: black; }
 
-/* Floating bottom panel */
+/* Floating bottom panel - redesigned for better responsiveness */
 .floating-panel { 
   position: fixed; 
   bottom: 0; 
   left: 0; 
   right: 0; 
-  height: 60px; 
   background-color: #e6f3ff; 
   border-top: 2px solid #0066cc; 
   display: flex; 
+  flex-wrap: wrap;
   align-items: center; 
   justify-content: center; 
-  gap: 15px;
-  padding: 0 20px; 
+  gap: 8px;
+  padding: 10px 15px; 
   z-index: 1000;
   transition: bottom 0.3s ease-in-out;
+  min-height: 60px;
 }
 
 .floating-panel.collapsed {
-  bottom: -50px;
+  bottom: -100%;
 }
 
 /* Panel Toggle Button */
@@ -97,6 +98,7 @@ body { margin: 0; padding: 0; }
   color: #007bff;
   font-weight: bold;
   font-family: inherit;
+  white-space: nowrap;
 }
 
 .control-button:hover {
@@ -113,10 +115,12 @@ body { margin: 0; padding: 0; }
   text-align: center;
 }
 
-/* Lyrics dropdown */
+/* Lyrics dropdown - make it more compact */
 .lyrics-dropdown,
 .rhythm-systems-dropdown {
-  /* Inherits styles from .control-button */
+  min-width: 120px;
+  max-width: 200px;
+  flex-shrink: 1;
 }
 
 .hidden {
@@ -127,11 +131,13 @@ body { margin: 0; padding: 0; }
 .copy-visual-button {
     font-size: 18px;
     padding: 0 12px;
+    min-width: 40px;
 }
 
 /* Save Button */
 .save-button {
     padding: 0 12px;
+    min-width: 40px;
 }
 
 .save-icon {
@@ -175,10 +181,11 @@ body { margin: 0; padding: 0; }
   align-items: center; 
   justify-content: center; 
   width: 40px; 
-  height: 30px; 
+  height: 40px;
   border-radius: 6px; 
   cursor: pointer; 
   transition: all 0.2s ease; 
+  flex-shrink: 0;
 }
 
 .icon-button.active { 
@@ -213,6 +220,7 @@ body { margin: 0; padding: 0; }
 /* Time signature button */
 .ts-button-wrapper {
   position: relative;
+  flex-shrink: 0;
 }
 .time-signature-button {
   display: flex;
@@ -273,6 +281,7 @@ body { margin: 0; padding: 0; }
   transition: all 0.2s ease;
   font-size: 20px;
   color: #007bff;
+  flex-shrink: 0;
 }
 
 .play-button:hover {
@@ -287,6 +296,8 @@ body { margin: 0; padding: 0; }
 /* 16th Note Button */
 .sixteenth-note-button {
     padding: 0 8px;
+    min-width: 40px;
+    flex-shrink: 0;
 }
 .sixteenth-note-button img {
     height: 80%;
@@ -323,6 +334,7 @@ body { margin: 0; padding: 0; }
   border-radius: 6px;
   overflow: hidden;
   border: 1px solid #ccc;
+  flex-shrink: 0;
 }
 
 .sound-toggle-btn {
@@ -594,6 +606,7 @@ body { margin: 0; padding: 0; }
   border: 1px solid #007bff;
   border-radius: 6px;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .mode-button {
@@ -610,6 +623,7 @@ body { margin: 0; padding: 0; }
   display: flex;
   align-items: center;
   justify-content: center;
+  white-space: nowrap;
 }
 
 .mode-button.active {
@@ -621,57 +635,127 @@ body { margin: 0; padding: 0; }
   background-color: #e6f3ff;
 }
 
-/* Responsive adjustments for smaller screens */
-@media (max-width: 720px) {
+/* Responsive adjustments - improved layout strategy */
+@media (max-width: 900px) {
   .floating-panel {
-    height: 90px; /* Reduced height */
-    display: grid;
-    grid-template-areas:
-      "play ts note para camera circle"
-      ". bpm audio-ctrl lyrics . .";
-    grid-template-columns: 1fr repeat(4, auto) 1fr;
-    grid-template-rows: auto auto;
-    gap: 5px 10px; /* Reduced row gap */
-    padding: 5px 10px; /* Reduced top/bottom padding */
-    align-items: center;
-    justify-content: center;
-  }
-
-  .floating-panel.collapsed {
-    bottom: -90px; /* Adjusted for new height */
-  }
-
-  .panel-toggle-button {
-    bottom: 100px; /* Sit on top of the 100px panel */
+    gap: 6px;
+    padding: 8px 10px;
   }
   
-  .panel-toggle-button.collapsed {
-    bottom: 10px; /* Sit on top of the visible part of the collapsed panel */
-  }
-
-  /* Assign items to grid areas */
-  #play-button { grid-area: play; justify-self: end; }
-  .ts-button-wrapper { grid-area: ts; }
-  #sixteenth-note-btn { grid-area: note; }
-  #paragraph-btn { grid-area: para; }
-  #copy-visual-btn { grid-area: camera; }
-  #circle-icon { grid-area: circle; justify-self: start; }
-  #bpm-button { grid-area: bpm; justify-self: end; }
-  .audio-controls { grid-area: audio-ctrl; }
-  #lyrics-dropdown { grid-area: lyrics; justify-self: start;}
-
-  /* Ensure all direct children of the panel are considered grid items */
-  .floating-panel > * {
-    min-width: 0;
+  /* Make dropdowns more compact */
+  .lyrics-dropdown,
+  .rhythm-systems-dropdown {
+    min-width: 100px;
+    max-width: 150px;
+    font-size: 12px;
   }
 }
 
-/* Zoom Controls */
+@media (max-width: 720px) {
+  .floating-panel {
+    gap: 5px;
+    padding: 8px 8px;
+  }
+  
+  /* Further compress elements */
+  .control-button {
+    height: 36px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+  
+  .play-button {
+    width: 45px;
+    height: 36px;
+  }
+  
+  .sound-toggle-grid {
+    grid-template-columns: repeat(2, 70px);
+    grid-template-rows: repeat(2, 18px);
+  }
+  
+  .sound-toggle-btn {
+    font-size: 11px;
+  }
+  
+  .mode-button {
+    height: 36px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+  
+  .lyrics-dropdown,
+  .rhythm-systems-dropdown {
+    min-width: 90px;
+    max-width: 120px;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 500px) {
+  .floating-panel {
+    gap: 4px;
+    padding: 6px 6px;
+  }
+  
+  /* Compact everything further */
+  .control-button {
+    height: 32px;
+    padding: 0 6px;
+    font-size: 11px;
+  }
+  
+  .play-button {
+    width: 40px;
+    height: 32px;
+    font-size: 16px;
+  }
+  
+  .icon-button,
+  .time-signature-button {
+    width: 36px;
+    height: 32px;
+  }
+  
+  .sound-toggle-grid {
+    grid-template-columns: repeat(2, 60px);
+    grid-template-rows: repeat(2, 16px);
+  }
+  
+  .sound-toggle-btn {
+    font-size: 10px;
+  }
+  
+  .mode-button {
+    height: 32px;
+    padding: 0 6px;
+    font-size: 11px;
+  }
+  
+  .lyrics-dropdown,
+  .rhythm-systems-dropdown {
+    min-width: 80px;
+    max-width: 100px;
+    font-size: 10px;
+  }
+  
+  /* Make BPM display more compact */
+  #bpm-button {
+    min-width: 60px;
+  }
+}
+
+/* Zoom Controls - adjusted positioning to avoid overlap */
 #zoom-controls {
   position: fixed;
-  bottom: 20px;
+  bottom: 80px; /* Raised to avoid panel */
   left: 20px;
-  z-index: 1002;
+  z-index: 999; /* Below panel */
+}
+
+/* Adjust zoom controls when panel is collapsed */
+.floating-panel.collapsed ~ #zoom-controls {
+  bottom: 30px;
 }
 
 .fab {
@@ -722,6 +806,17 @@ body { margin: 0; padding: 0; }
   transform: translateY(-60px);
   opacity: 1;
   pointer-events: auto;
+}
+
+/* Adjust zoom controls on mobile */
+@media (max-width: 720px) {
+  #zoom-controls {
+    bottom: 110px; /* Higher to avoid multi-row panel */
+  }
+  
+  .floating-panel.collapsed ~ #zoom-controls {
+    bottom: 30px;
+  }
 }
 
 /* Zoom level styles */
