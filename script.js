@@ -554,48 +554,76 @@ function applyIsolatedRhythmChange(position) {
     source.stop(ctx.currentTime + 0.1);
   }
 
-  // Create a bass drum sound
-  function playBassDrum() {
+// Replace the existing playBassDrum function with this improved version
+function playBassDrum() {
     if (!rhythmEnabled) return;
     const ctx = initAudioContext();
     const time = ctx.currentTime;
 
-    // Main oscillator for the "body" of the kick
+    // Main body oscillator - starts higher and drops quickly for punch
     const bodyOsc = ctx.createOscillator();
     bodyOsc.type = 'sine';
-    bodyOsc.frequency.setValueAtTime(120, time);
-    bodyOsc.frequency.exponentialRampToValueAtTime(50, time + 0.2);
+    bodyOsc.frequency.setValueAtTime(150, time);
+    bodyOsc.frequency.exponentialRampToValueAtTime(40, time + 0.15);
 
-    // Second oscillator for the "attack" or "beater" sound
+    // Attack oscillator for the beater click
     const attackOsc = ctx.createOscillator();
     attackOsc.type = 'triangle';
-    attackOsc.frequency.setValueAtTime(800, time);
-    attackOsc.frequency.exponentialRampToValueAtTime(50, time + 0.1);
+    attackOsc.frequency.setValueAtTime(200, time);
+    attackOsc.frequency.exponentialRampToValueAtTime(50, time + 0.03);
 
-    // Gain node for the attack to give it a sharp decay
+    // Noise for texture (optional but adds realism)
+    const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 0.1, ctx.sampleRate);
+    const noiseData = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < noiseData.length; i++) {
+        noiseData[i] = Math.random() * 2 - 1;
+    }
+    const noiseSource = ctx.createBufferSource();
+    noiseSource.buffer = noiseBuffer;
+
+    // Noise gain for subtle texture
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.15, time);
+    noiseGain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
+
+    // Attack gain - short and punchy
     const attackGain = ctx.createGain();
-    attackGain.gain.setValueAtTime(0.8, time);
-    attackGain.gain.exponentialRampToValueAtTime(0.01, time + 0.08);
+    attackGain.gain.setValueAtTime(0.6, time);
+    attackGain.gain.exponentialRampToValueAtTime(0.01, time + 0.04);
 
-    // Main gain node to shape the overall sound and prevent clicks
+    // Main gain envelope - natural decay
     const mainGain = ctx.createGain();
     mainGain.gain.setValueAtTime(0, time);
-    mainGain.gain.linearRampToValueAtTime(1, time + 0.01); // Quick ramp up
-    mainGain.gain.exponentialRampToValueAtTime(0.1, time + 0.3); // Body decay
-    mainGain.gain.linearRampToValueAtTime(0, time + 0.4); // Smooth ramp to 0 to avoid click
+    mainGain.gain.linearRampToValueAtTime(0.8, time + 0.005); // Quick attack
+    mainGain.gain.exponentialRampToValueAtTime(0.3, time + 0.1); // Initial decay
+    mainGain.gain.exponentialRampToValueAtTime(0.01, time + 0.4); // Sustain and release
+    mainGain.gain.linearRampToValueAtTime(0, time + 0.45); // Final fade to prevent click
 
-    // Connect the nodes
-    bodyOsc.connect(mainGain);
+    // Optional: Add a subtle low-pass filter for warmth
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(800, time);
+    filter.Q.setValueAtTime(1, time);
+
+    // Connect everything
+    bodyOsc.connect(filter);
     attackOsc.connect(attackGain);
+    noiseSource.connect(noiseGain);
+    
     attackGain.connect(mainGain);
+    noiseGain.connect(mainGain);
+    filter.connect(mainGain);
     mainGain.connect(ctx.destination);
 
-    // Start and stop the oscillators
+    // Start and stop
     bodyOsc.start(time);
     attackOsc.start(time);
-    bodyOsc.stop(time + 0.4);
-    attackOsc.stop(time + 0.4);
-  }
+    noiseSource.start(time);
+    
+    bodyOsc.stop(time + 0.45);
+    attackOsc.stop(time + 0.45);
+    noiseSource.stop(time + 0.45);
+}
 
   // Play triangle wave tone at A2 (110 Hz)
   function playTriangleTone(duration = 0.2) {
