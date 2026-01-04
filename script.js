@@ -1542,7 +1542,7 @@ modalSubmitBtn.addEventListener('click', () => {
 
   function updateCircleVisibility() {
     document.querySelectorAll('.circles').forEach(box => {
-      box.classList.toggle('hidden', !circleIconActive);
+      box.classList.toggle('circles-hidden', !circleIconActive);
     });
   }
 
@@ -1608,7 +1608,7 @@ modalSubmitBtn.addEventListener('click', () => {
 
     const circlesDiv = document.createElement('div');
     circlesDiv.className = 'circles';
-    if (!circleIconActive) circlesDiv.classList.add('hidden');
+    if (!circleIconActive) circlesDiv.classList.add('circles-hidden');
     
     if (beatStartPosition === 0 && hasPickupMeasure) {
         circlesDiv.classList.add('pickup');
