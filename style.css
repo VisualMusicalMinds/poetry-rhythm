@@ -11,7 +11,7 @@ body { margin: 0; padding: 0; }
 .notes-box.compound svg, .notes-box.compound img { }
 .notes-box.sixteenth svg, .notes-box.sixteenth img { }
 .circles { display: flex; justify-content: center; margin-bottom: 4px; border: 1px solid #c0c0c0; padding: 6px 8px; background-color: #f5f5f5; border-radius: 8px; transition: opacity 0.3s ease; }
-.circles.hidden { opacity: 0; pointer-events: none; }
+.circles.circles-hidden { opacity: 0; pointer-events: none; }
 .circles.pickup {
     background-color: #90EE90; /* Brighter Green */
 }
